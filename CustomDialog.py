@@ -37,9 +37,9 @@ class CustomDialog(QDialog):
         port_1 = QLabel()
         # Find available ports to connect to
         ports = serial.tools.list_ports.comports()
-        for p in ports:
-            print(p.device)
-            com_list.append(p.device)
+        for index, value in enumerate(sorted(ports)):
+            print(index, '\t', value.name, '\t', value.description)
+            com_list.append(value.name + '\t' + value.description)
         print(len(ports), 'ports found')
 
         message = QLabel("Enter Port Name")
