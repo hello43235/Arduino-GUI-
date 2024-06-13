@@ -101,8 +101,8 @@ class App(QtWidgets.QMainWindow):
         self.otherplot1.setYRange(0, 90, padding=0)
         self.otherplot1.setXRange(-180, 180, padding=0)
         self.otherplot1.addLine(x=0, pen=0.2)
-        self.otherplot1.plot([0, -806], [0, 806], pen=0.2)
-        self.otherplot1.plot([0, 806], [0, 806], pen=0.2)
+        self.otherplot1.plot([806, -806], [-806, 806], pen=0.2)
+        self.otherplot1.plot([-806, 806], [-806, 806], pen=0.2)
 
         # Top Right Plot: Radar Image
         self.otherplot2 = self.canvas.addPlot(0, 1)
@@ -113,8 +113,8 @@ class App(QtWidgets.QMainWindow):
         self.otherplot2.setYRange(0, 90, padding=0)
         self.otherplot2.setXRange(-180, 180, padding=0)
         self.otherplot2.addLine(x=0, pen=0.2)
-        self.otherplot2.plot([0, -806], [0, 806], pen=0.2)
-        self.otherplot2.plot([0, 806], [0, 806], pen=0.2)
+        self.otherplot2.plot([806, -806], [-806, 806], pen=0.2)
+        self.otherplot2.plot([-806, 806], [-806, 806], pen=0.2)
 
         # Bottom Right Plot: Radar Image
         self.otherplot3 = self.canvas.addPlot(1, 1)
@@ -125,8 +125,8 @@ class App(QtWidgets.QMainWindow):
         self.otherplot3.setYRange(0, 90, padding=0)
         self.otherplot3.setXRange(-180, 180, padding=0)
         self.otherplot3.addLine(x=0, pen=0.2)
-        self.otherplot3.plot([0, -806], [0, 806], pen=0.2)
-        self.otherplot3.plot([0, 806], [0, 806], pen=0.2)
+        self.otherplot3.plot([806, -806], [-806, 806], pen=0.2)
+        self.otherplot3.plot([-806, 806], [-806, 806], pen=0.2)
 
         # Create Polar Plot Grid Lines
         for r in range(2, 806, 10):
