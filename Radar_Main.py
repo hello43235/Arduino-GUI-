@@ -18,8 +18,9 @@ from CustomDialog import CustomDialog
 class App(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(App, self).__init__(parent)
-        self.setWindowTitle("Radar Project")
+        self.setWindowTitle("Arduino Project")
         self.setWindowState(QtCore.Qt.WindowMaximized)
+        self.setMinimumSize(711, 400)  # To avoid being resized too small
         self.setStyleSheet("""QPushButton { background-color: qlineargradient(spread: pad, x1:0,y1:0.5,x2:1,y2:1,
                                     stop:0 rgb(1, 108, 52),stop:1 rgb(187, 229, 29));
                                     border-style: outset;
@@ -67,29 +68,41 @@ class App(QtWidgets.QMainWindow):
         self.setCentralWidget(self.mainbox)
         self.mainbox.setLayout(QtWidgets.QGridLayout())
 
-        self.canvas = pg.GraphicsLayoutWidget(title="Ultrasonic Sensor")
+        self.canvas = pg.GraphicsLayoutWidget(title="Ultrasonic Sensor")  # Contains all the plots in a gridlayout
         self.mainbox.layout().addWidget(self.canvas, 0, 0, 2, 3)
 
         # Labels for User Communication
-        self.label = QtWidgets.QLabel()
-        self.label.setMinimumWidth(625)
-        self.mainbox.layout().addWidget(self.label, 2, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
-        self.label2 = QtWidgets.QLabel()
+        self.label = QtWidgets.QLabel()  # First Label
+        self.label.setMaximumHeight(30)
+        self.mainbox.layout().addWidget(self.label, 2, 0)
+        self.label2 = QtWidgets.QLabel()  # Second Label
         self.mainbox.layout().addWidget(self.label2, 3, 0)
-        self.label3 = QtWidgets.QLabel()
+        self.label3 = QtWidgets.QLabel()  # Third Label
         self.mainbox.layout().addWidget(self.label3, 4, 0)
+
+        # Slider for setting angle
+        self.set_angle = QSlider(Qt.Orientation.Horizontal)
+        self.set_angle.setRange(0, 180)
+        self.set_angle.setSingleStep(1)
+        self.set_angle.setTickInterval(1)
+        self.set_angle.setValue(180)
+        self.set_angle.setTickPosition(QSlider.TicksAbove)
+        self.set_angle.setMaximumWidth(930)
+        self.set_angle.valueChanged.connect(self.static_angle)
+        self.static_timer = QtCore.QTimer()
+        self.static_timer.timeout.connect(self.static_scan)
+        self.mainbox.layout().addWidget(self.set_angle, 2, 1, 1, 2)
+        self.x_static = [0 for _ in range(8)]
+        self.y_static = [0 for _ in range(8)]
+        self.d_symbol = '\u00b0'
 
         # Top Left Plot: Ultrasonic Sensor
         self.otherplot = self.canvas.addPlot(0, 0)
-        self.otherplot.setMinimumWidth(625)
+        self.otherplot.setMaximumWidth(900)
         self.h2 = self.otherplot.plot(pen='g')
 
-        # Set Tick Interval
-        self.tick = self.otherplot.getAxis('left')
-        ticks = np.linspace(0, 180, 10)
-        self.tick.setTicks([[(v, str(v)) for v in ticks]])
+        # Set Grid Lines
         self.otherplot.showGrid(x=True, y=True)
-
         self.otherplot.setYRange(0, 180, padding=0)
 
         # Bottom Left Plot: Servo
@@ -97,12 +110,13 @@ class App(QtWidgets.QMainWindow):
         self.h1 = self.otherplot1.plot(pen='g')
         self.h3 = self.otherplot1.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
         self.h4 = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
+        self.h_static = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=5, symbolPen=None)
 
         self.otherplot1.setYRange(0, 90, padding=0)
-        self.otherplot1.setXRange(-180, 180, padding=0)
+        self.otherplot1.setXRange(-90, 90, padding=0)
         self.otherplot1.addLine(x=0, pen=0.2)
-        self.otherplot1.plot([806, -806], [-806, 806], pen=0.2)
-        self.otherplot1.plot([-806, 806], [-806, 806], pen=0.2)
+        self.otherplot1.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
+        self.otherplot1.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
 
         # Top Right Plot: Radar Image
         self.otherplot2 = self.canvas.addPlot(0, 1)
@@ -111,10 +125,10 @@ class App(QtWidgets.QMainWindow):
         self.h9 = self.otherplot2.plot(pen='g')
 
         self.otherplot2.setYRange(0, 90, padding=0)
-        self.otherplot2.setXRange(-180, 180, padding=0)
+        self.otherplot2.setXRange(-90, 90, padding=0)
         self.otherplot2.addLine(x=0, pen=0.2)
-        self.otherplot2.plot([806, -806], [-806, 806], pen=0.2)
-        self.otherplot2.plot([-806, 806], [-806, 806], pen=0.2)
+        self.otherplot2.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
+        self.otherplot2.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
 
         # Bottom Right Plot: Radar Image
         self.otherplot3 = self.canvas.addPlot(1, 1)
@@ -123,21 +137,21 @@ class App(QtWidgets.QMainWindow):
         self.h10 = self.otherplot3.plot(pen='g')
 
         self.otherplot3.setYRange(0, 90, padding=0)
-        self.otherplot3.setXRange(-180, 180, padding=0)
+        self.otherplot3.setXRange(-90, 90, padding=0)
         self.otherplot3.addLine(x=0, pen=0.2)
-        self.otherplot3.plot([806, -806], [-806, 806], pen=0.2)
-        self.otherplot3.plot([-806, 806], [-806, 806], pen=0.2)
+        self.otherplot3.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
+        self.otherplot3.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
 
         # Create Polar Plot Grid Lines
-        for r in range(2, 806, 10):
+        for r in range(0, 806, 10):  # From 2 to 806 cm at 10 cm intervals
             circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
             circle.setPen(pg.mkPen(0.2))
             self.otherplot1.addItem(circle)
-        for r in range(2, 806, 10):
+        for r in range(0, 806, 10):
             circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
             circle.setPen(pg.mkPen(0.2))
             self.otherplot2.addItem(circle)
-        for r in range(2, 806, 10):
+        for r in range(0, 806, 10):
             circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
             circle.setPen(pg.mkPen(0.2))
             self.otherplot3.addItem(circle)
@@ -148,13 +162,14 @@ class App(QtWidgets.QMainWindow):
         self.theta = np.linspace(np.pi / -2, np.pi / 2, 181)
         self.radius = [180 for _ in range(181)]
 
-        self.ydata1 = [0, self.radius[0] * np.sin(self.theta[0])]
-        self.xdata1 = [0, self.radius[0] * np.cos(self.theta[0])]
+        self.ydata1 = [0, self.radius[0] * np.sin(self.theta[0])]  # Radar scanner line
+        self.xdata1 = [0, self.radius[0] * np.cos(self.theta[0])]  # initialized at (0, radius)
         self.ydata3 = []
         self.xdata3 = []
         self.ydata5 = []
         self.xdata5 = []
-        self.tracking_list = []
+        self.tracking_list_radius = []
+        self.tracking_list_azimuth = []
         self.radius1 = []
 
         self.angle = 0
@@ -162,7 +177,7 @@ class App(QtWidgets.QMainWindow):
         self.threshold = 50
 
         # Top Plot Variables
-        self.ydata = [0 for _ in range(250)]
+        self.ydata = [0 for _ in range(200)]  # Sets the x range for Top Left Plot
         self.counter = 0
 
         # For Frame Rate Calculations
@@ -172,84 +187,130 @@ class App(QtWidgets.QMainWindow):
         self.now_then2 = time.time()
 
         # Start  #####################
-        self.timer = QtCore.QTimer()
+        self.timer = QtCore.QTimer()  # Timer for regular scanning
         self.timer.timeout.connect(self._update)
 
-        self.detection_timer = QtCore.QTimer()
+        self.detection_timer = QtCore.QTimer()  # Timer for object detection
         self.detection_timer.timeout.connect(self._scanning)
 
         # Connect to Arduino Button
         self.arduino_button = QPushButton("Connect to Arduino")
         self.arduino_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.arduino_button, 2, 1)
+        self.mainbox.layout().addWidget(self.arduino_button, 3, 1)
         self.arduino_button.clicked.connect(self.connect_arduino)
 
         # Start Button
         self.start_button = QPushButton("Start")
         self.start_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.start_button, 2, 2)
+        self.mainbox.layout().addWidget(self.start_button, 3, 2)
         self.start_button.clicked.connect(self.start_timer)
 
         # Stop Button
         self.stop_button = QPushButton("Stop")
         self.stop_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.stop_button, 3, 2)
+        self.mainbox.layout().addWidget(self.stop_button, 4, 2)
         self.stop_button.clicked.connect(self.stop_timer)
 
         # Settings Button
         self.settings_button = QPushButton("Settings")
         self.settings_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.settings_button, 3, 1)
+        self.mainbox.layout().addWidget(self.settings_button, 4, 1)
         self.settings_button.clicked.connect(self.settings)
 
         # Export to png
         self.export_button = QPushButton("Export")
         self.export_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.export_button, 4, 1)
+        self.mainbox.layout().addWidget(self.export_button, 5, 1)
         self.export_button.clicked.connect(self.export)
 
         # Object Detection
-        self.obj_det = QPushButton("Object Detection")
+        self.obj_det = QPushButton("Object Scanning")
         self.obj_det.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.obj_det, 4, 2)
+        self.mainbox.layout().addWidget(self.obj_det, 5, 2)
         self.obj_det.clicked.connect(self.object_detection)
+
+        # Clear Button
+        self.clear = QPushButton("Clear Plots")
+        self.clear.setMaximumWidth(465)
+        self.mainbox.layout().addWidget(self.clear, 6, 1)
+        self.clear.clicked.connect(self.clear_plots)
+
+    def clear_plots(self):
+        self.timer.stop()
+        self.obj_det.setEnabled(True)  # Stop Timers
+        self.static_timer.stop()
+
+        self.h1.setData()
+        self.h2.setData()
+        self.h3.setData()
+        self.h4.setData()
+        self.h5.setData()
+        self.h6.setData()  # Clear All Plots
+        self.h7.setData()
+        self.h8.setData()
+        self.h9.setData()
+        self.h10.setData()
+        self.h_static.setData()
 
     def object_detection(self):
         try:
             self.timer.stop()
-            self.angle = 0
+            self.angle = 0  # Start scanning from theta = 0
             x = str(self.angle) + "\n"
-            self.arduino.write(bytes(x.encode()))
-            self.tracking_list = []
+            self.arduino.write(bytes(x.encode()))  # Move servo to angle
+            self.tracking_list_radius = []
+            self.tracking_list_azimuth = []
             self.scan = True
-            self.obj_det.setEnabled(False)
-            self.h1.setData()
-            self.h3.setData()
-            self.h4.setData()
+            self.obj_det.setEnabled(False)  # Disable further user input with button
+            self.xdata3 = []
+            self.ydata3 = []
+            self.h1.setData()  # Clear plots Top Left
+            self.h3.setData()  # Bottom Left
+            self.h4.setData()  # Bottom Left
+            self.h9.setData()  # Top Right Object Detection Line
+            self.h10.setData()  # Bottom Right Object Detection Line
         except Exception as a:
-            self.label.setText("Error: "+ str(a))
+            self.label.setText("Error: " + str(a))
 
     def _scanning(self):
 
-        if self.angle < (self.det_radius * 10):
+        if self.angle < (self.det_radius * 10):  # Scan to the preset radius in settings
             arduinoData = self.arduino.readline().decode('ascii')
             sensorData = int(arduinoData)
-            self.radius1.append(sensorData)
-            self.ydata2 = (sensorData * np.cos(self.theta[self.angle]))
-            self.ydata3.append(self.ydata2)
-            self.xdata2 = (sensorData * np.sin(self.theta[self.angle]))
-            self.xdata3.append(self.xdata2)
-            self.h4.setData(self.xdata3, self.ydata3)
+            if sensorData > self.threshold:
+                sensorData = self.threshold
+            self.ydata = self.ydata[1:] + [sensorData]
+            self.h2.setData(self.ydata, pen=pg.mkPen('g'))  # Plot distance in Top Left Plot
+
+            self.radius1.append(sensorData)  # For use in determining threshold
+            self.ydata2 = (sensorData * np.cos(self.theta[self.angle]))  # Polar -> Cartesian y-coordinate
+            self.xdata2 = (sensorData * np.sin(self.theta[self.angle]))  # Polar -> Cartesian x-coordinate
+            self.ydata3.append(self.ydata2)  # List for y-coordinates
+            self.xdata3.append(self.xdata2)  # List for x-coordinates
+            self.h4.setData(self.xdata3, self.ydata3)  # Update Bottom Left Plot with data points
             self.angle += 1
             x = str(self.angle) + "\n"
             self.arduino.write(bytes(x.encode()))
-            self.tracking_list.append([self.xdata2, self.ydata2])
+            self.tracking_list_radius.append(self.xdata2)  # Array of coordinates for further use
+            self.tracking_list_azimuth.append(self.ydata2)
         else:
             self.h9.setData(self.xdata3, self.ydata3)
             self.h10.setData(self.xdata3, self.ydata3)
-            a = (sum(self.radius1)/len(self.radius1))
-            self.threshold = round(a)
-            print(self.tracking_list)
+            a = (sum(self.radius1) / len(self.radius1))
+            # self.threshold = round(a)
+
+            with open("datax.txt", 'a+', encoding='utf-8') as f:
+                for i in range(len(self.tracking_list_radius)):
+                    f.write(str(self.tracking_list_radius[i]) + ",")
+                f.write("\n")
+
+            with open("datay.txt", 'a+', encoding='utf-8)') as f:
+                for i in range(len(self.tracking_list_azimuth)):
+                    f.write(str(self.tracking_list_azimuth[i]) + ",")
+                f.write("\n")
+
+            print("Radius: ", self.tracking_list_radius)
+            print("Azimuth: ", self.tracking_list_azimuth)
             self.label2.setText("Threshold: " + str(self.threshold) + " Actual: " + str(a))
             self.radius1 = []
             self.xdata3 = []
@@ -258,6 +319,7 @@ class App(QtWidgets.QMainWindow):
             self.obj_det.setEnabled(True)
             self.detection_timer.stop()
             self.scan = False
+            self.object_detection()
 
     def connect_arduino2(self, s):
         try:
@@ -314,12 +376,9 @@ class App(QtWidgets.QMainWindow):
             s = int(dlg.limit.text())
             self.set_limits(s)
             self.det_radius = dlg.detection_radius.value()
-            # self.connect_arduino()
 
     def set_limits(self, s):
 
-        ticks = np.linspace(0, 180, 10)
-        self.tick.setTicks([[(v, str(v)) for v in ticks]])
         self.otherplot.showGrid(x=True, y=True)
         self.otherplot.setYRange(0, s, padding=0)
 
@@ -339,23 +398,70 @@ class App(QtWidgets.QMainWindow):
         try:
             self.arduino.flushInput()
             if self.scan is False:
-                self.timer.start(10)
+                self.timer.start(1)
             else:
-                self.detection_timer.start(10)
-        except:
-            self.label.setText("Error: No Port detected")
+                self.detection_timer.start(1)
+        except Exception as a:
+            self.label.setText("Error: " + str(a))
+            self.label2.setText("Error: No Port detected")
 
     def stop_timer(self):
         self.timer.stop()
+        self.static_timer.stop()
+        self.obj_det.setEnabled(True)
+
+    def static_angle(self):
+        self.timer.stop()
+        self.obj_det.setEnabled(True)
+        self.angle = self.set_angle.value()
+        x = str(self.angle) + "\n"
+        try:
+            self.arduino.write(bytes(x.encode()))
+            self.label.setText("Angle: " + str(self.angle) + self.d_symbol)
+            self.label2.clear()
+        except:
+            self.label2.setText("Error: Not Connected")
+
+        self.static_timer.start(1)
+
+    def static_scan(self):
+        # Read Data From Arduino
+        try:
+            arduinoData = self.arduino.readline().decode('ascii')
+            sensorData = arduinoData.replace("\r\n", "")
+            sensorData = float(sensorData)
+        except Exception as a:
+            self.label.setText(str(a))
+            print("Error With Communications From Arduino")
+            print(str(a))
+            sensorData = 0
+
+        self.ydata = self.ydata[1:] + [sensorData]
+
+        # Line Plot
+        if self.threshold <= sensorData <= self.detection_range:
+            self.h2.setData(self.ydata, pen=pg.mkPen('g'))
+        elif sensorData < self.threshold:
+            self.h2.setData(self.ydata, pen=pg.mkPen('r'))
+        self.angle = int(self.angle)
+        # Bottom Left Plot
+        ydata_static = (sensorData * np.cos(self.theta[self.angle]))  # Polar -> Cartesian y-coordinate
+        xdata_static = (sensorData * np.sin(self.theta[self.angle]))  # Polar -> Cartesian x-coordinate
+        ydata_static = float(ydata_static)
+        xdata_static = float(xdata_static)
+        self.x_static = self.x_static[1:] + [xdata_static]
+        self.y_static = self.y_static[1:] + [ydata_static]
+        self.h_static.setData(self.x_static, self.y_static)
 
     def _update(self):
         try:
             arduinoData = self.arduino.readline().decode('ascii')
-            sensorData = int(arduinoData)
-            if sensorData >= 800:
-                sensorData = 0
-        except:
+            sensorData = arduinoData.replace("\r\n", "")
+            sensorData = float(sensorData)
+        except Exception as a:
+            self.label.setText(str(a))
             print("Error With Communications From Arduino")
+            print(str(a))
             sensorData = 0
 
         self.ydata = self.ydata[1:] + [sensorData]
