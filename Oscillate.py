@@ -1,3 +1,12 @@
+##################################################################
+# Program to record and visualize analog data from an Arduino
+# and HC-SR04 Sensor
+# Arduino should be configured according to the analog_port file
+# The analog input of the Arduino is connected to pin 5 of the
+# HC-SR04 receiver microchip
+##################################################################
+
+
 import sys
 import time
 
