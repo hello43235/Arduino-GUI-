@@ -1,3 +1,9 @@
+##################################################################
+# Used in conjunction with Radar_Combined.ino
+# GUI Program for small-scale sonar radar composed of an
+# Arduino Mega 2560, HC-SR04, and SG-90 servo motor
+##################################################################
+
 import sys
 import time
 
@@ -15,6 +21,7 @@ from ExportDialog import ExportDialog
 from CustomDialog import CustomDialog
 
 
+# noinspection PyArgumentList,PyStatementEffect
 class App(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(App, self).__init__(parent)
@@ -63,7 +70,10 @@ class App(QtWidgets.QMainWindow):
         self.det_radius = None
         self.detection_range = None
         self.scan = False
-        # Create Gui Elements ###########
+
+########################################################################################################################
+
+        ########### Create Gui Elements ###########
         self.mainbox = QtWidgets.QWidget()
         self.setCentralWidget(self.mainbox)
         self.mainbox.setLayout(QtWidgets.QGridLayout())
@@ -95,6 +105,50 @@ class App(QtWidgets.QMainWindow):
         self.x_static = [0 for _ in range(8)]
         self.y_static = [0 for _ in range(8)]
         self.d_symbol = '\u00b0'
+
+        # Connect to Arduino Button
+        self.arduino_button = QPushButton("Connect to Arduino")
+        self.arduino_button.setMaximumWidth(465)
+        self.mainbox.layout().addWidget(self.arduino_button, 3, 1)
+        self.arduino_button.clicked.connect(self.connect_arduino)
+
+        # Start Button
+        self.start_button = QPushButton("Start")
+        self.start_button.setMaximumWidth(465)
+        self.mainbox.layout().addWidget(self.start_button, 3, 2)
+        self.start_button.clicked.connect(self.start_timer)
+
+        # Stop Button
+        self.stop_button = QPushButton("Stop")
+        self.stop_button.setMaximumWidth(465)
+        self.mainbox.layout().addWidget(self.stop_button, 4, 2)
+        self.stop_button.clicked.connect(self.stop_timer)
+
+        # Settings Button
+        self.settings_button = QPushButton("Settings")
+        self.settings_button.setMaximumWidth(465)
+        self.mainbox.layout().addWidget(self.settings_button, 4, 1)
+        self.settings_button.clicked.connect(self.settings)
+
+        # Export to png
+        self.export_button = QPushButton("Export")
+        self.export_button.setMaximumWidth(465)
+        self.mainbox.layout().addWidget(self.export_button, 5, 1)
+        self.export_button.clicked.connect(self.export)
+
+        # Object Detection
+        self.obj_det = QPushButton("Object Scanning")
+        self.obj_det.setMaximumWidth(465)
+        self.mainbox.layout().addWidget(self.obj_det, 5, 2)
+        self.obj_det.clicked.connect(self.object_detection)
+
+        # Clear Button
+        self.clear = QPushButton("Clear Plots")
+        self.clear.setMaximumWidth(465)
+        self.mainbox.layout().addWidget(self.clear, 6, 1)
+        self.clear.clicked.connect(self.clear_plots)
+
+########################################################################################################################
 
         # Top Left Plot: Ultrasonic Sensor
         self.otherplot = self.canvas.addPlot(0, 0)
@@ -174,7 +228,8 @@ class App(QtWidgets.QMainWindow):
 
         self.angle = 0
         self.iter = False
-        self.threshold = 50
+        self.threshold = None
+        self.threshold2 = None
 
         # Top Plot Variables
         self.ydata = [0 for _ in range(200)]  # Sets the x range for Top Left Plot
@@ -193,49 +248,8 @@ class App(QtWidgets.QMainWindow):
         self.detection_timer = QtCore.QTimer()  # Timer for object detection
         self.detection_timer.timeout.connect(self._scanning)
 
-        # Connect to Arduino Button
-        self.arduino_button = QPushButton("Connect to Arduino")
-        self.arduino_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.arduino_button, 3, 1)
-        self.arduino_button.clicked.connect(self.connect_arduino)
-
-        # Start Button
-        self.start_button = QPushButton("Start")
-        self.start_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.start_button, 3, 2)
-        self.start_button.clicked.connect(self.start_timer)
-
-        # Stop Button
-        self.stop_button = QPushButton("Stop")
-        self.stop_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.stop_button, 4, 2)
-        self.stop_button.clicked.connect(self.stop_timer)
-
-        # Settings Button
-        self.settings_button = QPushButton("Settings")
-        self.settings_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.settings_button, 4, 1)
-        self.settings_button.clicked.connect(self.settings)
-
-        # Export to png
-        self.export_button = QPushButton("Export")
-        self.export_button.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.export_button, 5, 1)
-        self.export_button.clicked.connect(self.export)
-
-        # Object Detection
-        self.obj_det = QPushButton("Object Scanning")
-        self.obj_det.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.obj_det, 5, 2)
-        self.obj_det.clicked.connect(self.object_detection)
-
-        # Clear Button
-        self.clear = QPushButton("Clear Plots")
-        self.clear.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.clear, 6, 1)
-        self.clear.clicked.connect(self.clear_plots)
-
     def clear_plots(self):
+        """Stops all timers and clears all plots. Functionally a reset button"""
         self.timer.stop()
         self.obj_det.setEnabled(True)  # Stop Timers
         self.static_timer.stop()
@@ -253,6 +267,7 @@ class App(QtWidgets.QMainWindow):
         self.h_static.setData()
 
     def object_detection(self):
+        """Turns on object detection mode, connected to _scanning function"""
         try:
             self.timer.stop()
             self.angle = 0  # Start scanning from theta = 0
@@ -273,10 +288,13 @@ class App(QtWidgets.QMainWindow):
             self.label.setText("Error: " + str(a))
 
     def _scanning(self):
-
+        """Completes 1 sweep from 0 degrees to set radius. While scanning also
+            logs data in a .txt file for further use. Function completes 1 scan
+            then user must press start button again to complete another scan.
+            used in conjunction with 3d scatter.py"""
         if self.angle < (self.det_radius * 10):  # Scan to the preset radius in settings
             arduinoData = self.arduino.readline().decode('ascii')
-            sensorData = int(arduinoData)
+            sensorData = float(arduinoData)
             if sensorData > self.threshold:
                 sensorData = self.threshold
             self.ydata = self.ydata[1:] + [sensorData]
@@ -297,7 +315,6 @@ class App(QtWidgets.QMainWindow):
             self.h9.setData(self.xdata3, self.ydata3)
             self.h10.setData(self.xdata3, self.ydata3)
             a = (sum(self.radius1) / len(self.radius1))
-            # self.threshold = round(a)
 
             with open("datax.txt", 'a+', encoding='utf-8') as f:
                 for i in range(len(self.tracking_list_radius)):
@@ -322,6 +339,7 @@ class App(QtWidgets.QMainWindow):
             self.object_detection()
 
     def connect_arduino2(self, s):
+        """Connects to an arduino given a port name"""
         try:
             if s == "Success":
                 self.arduino = serial.Serial(self.port_name, 9600, bytesize=8)
@@ -334,7 +352,7 @@ class App(QtWidgets.QMainWindow):
             self.arduino_button.setEnabled(True)
 
     def connect_arduino(self):
-        # Connect to Arduino
+        """Creates a thread to connect to the arduino"""
         self.arduino_button.setEnabled(False)
         # 1 - create Worker and Thread inside the Form
         self.obj = SomeObject()  # no parent!
@@ -356,6 +374,7 @@ class App(QtWidgets.QMainWindow):
         self.thread.start()
 
     def export(self):
+        """Exports current plots to a png file"""
         self.timer.stop()
         dlg = ExportDialog(self)
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
@@ -368,17 +387,43 @@ class App(QtWidgets.QMainWindow):
                 self.label.setText("Incorrect File Type")
 
     def settings(self):
+        """Opens a pop-up modeless dialog box it has options for selecting
+            the serial COM port, maximum distance, upper and lower bounds
+            for object detection, and a scanning radius. Once the user
+            inputs their customizations and hits ok it then checks that all
+            inputs are valid and accepted. If invalid, reopens dialog box"""
         self.timer.stop()
         dlg = CustomDialog(self)
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
-            self.port_name = dlg.port.text()
-            self.threshold = int(dlg.threshold_number.text())
-            s = int(dlg.limit.text())
-            self.set_limits(s)
-            self.det_radius = dlg.detection_radius.value()
+            try:
+                self.port_name = dlg.port.currentText()
+                self.threshold = int(dlg.threshold_bound1.text())
+                self.threshold2 = int(dlg.threshold_bound2.text())
+                s = int(dlg.limit.text())
+                self.set_limits(s)
+                self.det_radius = dlg.detection_radius.value()
+                if s < self.threshold or s < self.threshold2:
+                    self.label3.setText("Error: Threshold Values Out of Range")
+                    self.settings()
+                else:
+                    if self.threshold > self.threshold2:
+                        pass
+                    elif self.threshold < self.threshold2:
+                        upper = self.threshold2
+                        lower = self.threshold1
+                        self.threshold = upper
+                        self.threshold2 = lower
+                    else:
+                        self.label2.setText("Error Invalid Threshold Values")
+                        self.settings()
+            except ValueError as a:
+                print(a)
+                self.label2.setText("That's not an integer!")
+                self.settings()
 
     def set_limits(self, s):
-
+        """Sets limits of each plot according to the maximum range specified
+            in the settings dialog box"""
         self.otherplot.showGrid(x=True, y=True)
         self.otherplot.setYRange(0, s, padding=0)
 
@@ -395,6 +440,7 @@ class App(QtWidgets.QMainWindow):
         self.detection_range = s
 
     def start_timer(self):
+        """Starts the timer for the scanning features"""
         try:
             self.arduino.flushInput()
             if self.scan is False:
@@ -406,11 +452,13 @@ class App(QtWidgets.QMainWindow):
             self.label2.setText("Error: No Port detected")
 
     def stop_timer(self):
+        """Stops all live plotting timers"""
         self.timer.stop()
         self.static_timer.stop()
         self.obj_det.setEnabled(True)
 
     def static_angle(self):
+        """Starts scanning at a stationary angle only"""
         self.timer.stop()
         self.obj_det.setEnabled(True)
         self.angle = self.set_angle.value()
@@ -419,12 +467,14 @@ class App(QtWidgets.QMainWindow):
             self.arduino.write(bytes(x.encode()))
             self.label.setText("Angle: " + str(self.angle) + self.d_symbol)
             self.label2.clear()
-        except:
+        except Exception as a:
+            print(a)
             self.label2.setText("Error: Not Connected")
 
         self.static_timer.start(1)
 
     def static_scan(self):
+        """Scanning function that updates live plots"""
         # Read Data From Arduino
         try:
             arduinoData = self.arduino.readline().decode('ascii')
@@ -439,9 +489,9 @@ class App(QtWidgets.QMainWindow):
         self.ydata = self.ydata[1:] + [sensorData]
 
         # Line Plot
-        if self.threshold <= sensorData <= self.detection_range:
+        if self.threshold <= sensorData <= self.detection_range or sensorData <= self.threshold2:
             self.h2.setData(self.ydata, pen=pg.mkPen('g'))
-        elif sensorData < self.threshold:
+        elif self.threshold2 < sensorData < self.threshold:
             self.h2.setData(self.ydata, pen=pg.mkPen('r'))
         self.angle = int(self.angle)
         # Bottom Left Plot
@@ -452,8 +502,14 @@ class App(QtWidgets.QMainWindow):
         self.x_static = self.x_static[1:] + [xdata_static]
         self.y_static = self.y_static[1:] + [ydata_static]
         self.h_static.setData(self.x_static, self.y_static)
+        string_data = str(sensorData)
+        dx = ("Distance: " + string_data + " cm")
+        self.label2.setText(dx)
 
     def _update(self):
+        """Scanning function that updates live plot and iterates servo angle
+            Also updates labels to display relevant data to user including:
+            Mean FPS, Distance to Object, and Time Taken For 1 Sweep"""
         try:
             arduinoData = self.arduino.readline().decode('ascii')
             sensorData = arduinoData.replace("\r\n", "")
@@ -465,9 +521,8 @@ class App(QtWidgets.QMainWindow):
             sensorData = 0
 
         self.ydata = self.ydata[1:] + [sensorData]
-        print(sensorData)
 
-        if self.threshold <= sensorData <= self.detection_range:
+        if self.threshold <= sensorData <= self.detection_range or sensorData <= self.threshold2:
             self.h2.setData(self.ydata, pen=pg.mkPen('g'))
             self.ydata4 = (sensorData * np.cos(self.theta[self.angle]))
 
@@ -476,7 +531,7 @@ class App(QtWidgets.QMainWindow):
 
             self.xdata5.append(self.xdata4)
             self.h4.setData(self.xdata5, self.ydata5)
-        elif sensorData < self.threshold:
+        elif self.threshold2 < sensorData < self.threshold:
             self.h2.setData(self.ydata, pen=pg.mkPen('r'))
             self.ydata2 = (sensorData * np.cos(self.theta[self.angle]))
 
@@ -488,7 +543,6 @@ class App(QtWidgets.QMainWindow):
 
         if self.angle >= (self.det_radius * 10):
             self.now_then2 = time.time()
-            # time.sleep(0.1)
             self.iter = True
             self.h5.setData(self.xdata3, self.ydata3)  # Top Right Plot Red
             self.h6.setData(self.xdata5, self.ydata5)  # Top Right Plot Green
@@ -502,7 +556,6 @@ class App(QtWidgets.QMainWindow):
             self.label3.setText("Time Taken For 1 Sweep: {0:.2f}".format(sweep_time) + " seconds")
         elif self.angle <= 0:
             self.now_then = time.time()
-            # time.sleep(0.1)
             self.iter = False
             self.h7.setData(self.xdata3, self.ydata3)  # Bottom Right Plot Red
             self.h8.setData(self.xdata5, self.ydata5)  # Bottom Right Plot Green
@@ -521,7 +574,7 @@ class App(QtWidgets.QMainWindow):
         x = str(self.angle) + "\n"
         self.arduino.write(bytes(x.encode()))
 
-        self.label.setText("Angle: " + x)
+        self.label.setText("Angle: " + x + self.d_symbol)
 
         self.ydata1 = [0, self.radius[self.angle] * np.cos(self.theta[self.angle])]
         self.xdata1 = [0, self.radius[self.angle] * np.sin(self.theta[self.angle])]
@@ -533,7 +586,8 @@ class App(QtWidgets.QMainWindow):
 
         try:
             fps2 = 1.0 / dt
-        except:
+        except Exception as a:
+            print(a)
             fps2 = 1
             print("Too Fast!")
         self.lastupdate = now
