@@ -70,8 +70,10 @@ class App(QtWidgets.QMainWindow):
         self.det_radius = None
         self.detection_range = None
         self.scan = False
+        self.plot1 = None
+        self.plot2 = None
 
-########################################################################################################################
+        ################################################################################################################
 
         ########### Create Gui Elements ###########
         self.mainbox = QtWidgets.QWidget()
@@ -79,6 +81,7 @@ class App(QtWidgets.QMainWindow):
         self.mainbox.setLayout(QtWidgets.QGridLayout())
 
         self.canvas = pg.GraphicsLayoutWidget(title="Ultrasonic Sensor")  # Contains all the plots in a gridlayout
+
         self.mainbox.layout().addWidget(self.canvas, 0, 0, 2, 3)
 
         # Labels for User Communication
@@ -148,67 +151,19 @@ class App(QtWidgets.QMainWindow):
         self.mainbox.layout().addWidget(self.clear, 6, 1)
         self.clear.clicked.connect(self.clear_plots)
 
-########################################################################################################################
+        ################################################################################################################
 
         # Top Left Plot: Ultrasonic Sensor
         self.otherplot = self.canvas.addPlot(0, 0)
-        self.otherplot.setMaximumWidth(900)
-        self.h2 = self.otherplot.plot(pen='g')
-
-        # Set Grid Lines
-        self.otherplot.showGrid(x=True, y=True)
-        self.otherplot.setYRange(0, 180, padding=0)
 
         # Bottom Left Plot: Servo
         self.otherplot1 = self.canvas.addPlot(1, 0)
-        self.h1 = self.otherplot1.plot(pen='g')
-        self.h3 = self.otherplot1.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
-        self.h4 = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
-        self.h_static = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=5, symbolPen=None)
-
-        self.otherplot1.setYRange(0, 90, padding=0)
-        self.otherplot1.setXRange(-90, 90, padding=0)
-        self.otherplot1.addLine(x=0, pen=0.2)
-        self.otherplot1.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
-        self.otherplot1.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
 
         # Top Right Plot: Radar Image
         self.otherplot2 = self.canvas.addPlot(0, 1)
-        self.h5 = self.otherplot2.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
-        self.h6 = self.otherplot2.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
-        self.h9 = self.otherplot2.plot(pen='g')
-
-        self.otherplot2.setYRange(0, 90, padding=0)
-        self.otherplot2.setXRange(-90, 90, padding=0)
-        self.otherplot2.addLine(x=0, pen=0.2)
-        self.otherplot2.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
-        self.otherplot2.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
 
         # Bottom Right Plot: Radar Image
         self.otherplot3 = self.canvas.addPlot(1, 1)
-        self.h7 = self.otherplot3.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
-        self.h8 = self.otherplot3.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
-        self.h10 = self.otherplot3.plot(pen='g')
-
-        self.otherplot3.setYRange(0, 90, padding=0)
-        self.otherplot3.setXRange(-90, 90, padding=0)
-        self.otherplot3.addLine(x=0, pen=0.2)
-        self.otherplot3.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
-        self.otherplot3.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
-
-        # Create Polar Plot Grid Lines
-        for r in range(0, 806, 10):  # From 2 to 806 cm at 10 cm intervals
-            circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
-            circle.setPen(pg.mkPen(0.2))
-            self.otherplot1.addItem(circle)
-        for r in range(0, 806, 10):
-            circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
-            circle.setPen(pg.mkPen(0.2))
-            self.otherplot2.addItem(circle)
-        for r in range(0, 806, 10):
-            circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
-            circle.setPen(pg.mkPen(0.2))
-            self.otherplot3.addItem(circle)
 
         # Set Data  #####################
 
@@ -248,6 +203,9 @@ class App(QtWidgets.QMainWindow):
         self.detection_timer = QtCore.QTimer()  # Timer for object detection
         self.detection_timer.timeout.connect(self._scanning)
 
+        #Plot Items
+        self.plot_items()
+
     def clear_plots(self):
         """Stops all timers and clears all plots. Functionally a reset button"""
         self.timer.stop()
@@ -265,6 +223,7 @@ class App(QtWidgets.QMainWindow):
         self.h9.setData()
         self.h10.setData()
         self.h_static.setData()
+        self.h_static2.setData()
 
     def object_detection(self):
         """Turns on object detection mode, connected to _scanning function"""
@@ -416,10 +375,156 @@ class App(QtWidgets.QMainWindow):
                     else:
                         self.label2.setText("Error Invalid Threshold Values")
                         self.settings()
-            except ValueError as a:
+                self.plot1 = dlg.plot1.checkState()
+                self.plot2 = dlg.plot2.checkState()
+                print(self.plot1)
+                print(self.plot2)
+                self.checked_plots()
+            except Exception as a:
                 print(a)
                 self.label2.setText("That's not an integer!")
                 self.settings()
+
+    def checked_plots(self):
+        #Top Plots
+        if self.plot1 == 0:
+            # Remove Plots
+            try:
+                self.canvas.removeItem(self.otherplot)
+            except Exception as a:
+                print(a)
+            try:
+                self.canvas.removeItem(self.otherplot2)
+            except Exception as a:
+                print(a)
+
+            # Add it back
+            self.otherplot = self.canvas.addPlot(0, 0, 1, 2)
+
+        elif self.plot1 == 2:
+            # Remove Plots
+            try:
+                self.canvas.removeItem(self.otherplot)
+            except Exception as a:
+                print(a)
+            try:
+                self.canvas.removeItem(self.otherplot2)
+            except Exception as a:
+                print(a)
+
+            # Add it back
+            self.otherplot = self.canvas.addPlot(0, 0)
+            self.otherplot2 = self.canvas.addPlot(0, 1)
+
+        # Bottom Plots
+        if self.plot2 == 0:
+            # Remove Plots
+            try:
+                self.canvas.removeItem(self.otherplot3)
+            except Exception as a:
+                print(a)
+            try:
+                self.canvas.removeItem(self.otherplot1)
+            except Exception as a:
+                print(a)
+
+            # Add it back
+            self.otherplot1 = self.canvas.addPlot(1, 0, 1, 2)
+
+        elif self.plot2 == 2:
+            # Remove Plots
+            try:
+                self.canvas.removeItem(self.otherplot1)
+            except Exception as a:
+                print(a)
+            try:
+                self.canvas.removeItem(self.otherplot3)
+            except Exception as a:
+                print(a)
+
+            # Add it back
+            self.otherplot1 = self.canvas.addPlot(1, 0)
+            self.otherplot3 = self.canvas.addPlot(1, 1)
+        self.plot_items()
+
+    def plot_items(self):
+
+        def top_left():
+            # Top Left
+            self.h2 = self.otherplot.plot(pen='g')
+
+            # Set Grid Lines
+            self.otherplot.showGrid(x=True, y=True)
+            self.otherplot.setYRange(0, 180, padding=0)
+
+        def top_right():
+            # Top Right Plot
+            self.h5 = self.otherplot2.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
+            self.h6 = self.otherplot2.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
+            self.h9 = self.otherplot2.plot(pen='g')
+
+            self.otherplot2.setYRange(0, 90, padding=0)
+            self.otherplot2.setXRange(-90, 90, padding=0)
+            self.otherplot2.addLine(x=0, pen=0.2)
+            self.otherplot2.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
+            self.otherplot2.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
+
+            for r in range(0, 806, 10):
+                circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
+                circle.setPen(pg.mkPen(0.2))
+                self.otherplot2.addItem(circle)
+
+        def bot_left():
+            # Bottom Left Plot
+            self.h1 = self.otherplot1.plot(pen='g')
+            self.h3 = self.otherplot1.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
+            self.h4 = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
+            self.h_static = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=5, symbolPen=None)
+            self.h_static2 = self.otherplot1.plot([], pen=None, symbolBrush=(255, 255, 0), symbolSize=2, symbolPen=None)
+
+            self.otherplot1.setYRange(0, 90, padding=0)
+            self.otherplot1.setXRange(-90, 90, padding=0)
+            self.otherplot1.addLine(x=0, pen=0.2)
+            self.otherplot1.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
+            self.otherplot1.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
+
+            for r in range(0, 806, 10):  # From 2 to 806 cm at 10 cm intervals
+                circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
+                circle.setPen(pg.mkPen(0.2))
+                self.otherplot1.addItem(circle)
+
+        def bot_right():
+            # Bottom Right Plot
+            self.h7 = self.otherplot3.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
+            self.h8 = self.otherplot3.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
+            self.h10 = self.otherplot3.plot(pen='g')
+
+            self.otherplot3.setYRange(0, 90, padding=0)
+            self.otherplot3.setXRange(-90, 90, padding=0)
+            self.otherplot3.addLine(x=0, pen=0.2)
+            self.otherplot3.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
+            self.otherplot3.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
+
+            for r in range(0, 806, 10):
+                circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
+                circle.setPen(pg.mkPen(0.2))
+                self.otherplot3.addItem(circle)
+
+        if self.plot1 is None and self.plot2 is None:
+            top_left()
+            top_right()
+            bot_left()
+            bot_right()
+        if self.plot1 == 2:
+            top_left()
+            top_right()
+        else:
+            top_left()
+        if self.plot2 == 2:
+            bot_left()
+            bot_right()
+        else:
+            bot_left()
 
     def set_limits(self, s):
         """Sets limits of each plot according to the maximum range specified
@@ -441,6 +546,7 @@ class App(QtWidgets.QMainWindow):
 
     def start_timer(self):
         """Starts the timer for the scanning features"""
+        self.clear_plots()
         try:
             self.arduino.flushInput()
             if self.scan is False:
@@ -453,14 +559,13 @@ class App(QtWidgets.QMainWindow):
 
     def stop_timer(self):
         """Stops all live plotting timers"""
-        self.timer.stop()
-        self.static_timer.stop()
-        self.obj_det.setEnabled(True)
+        self.clear_plots()
 
     def static_angle(self):
         """Starts scanning at a stationary angle only"""
-        self.timer.stop()
-        self.obj_det.setEnabled(True)
+        self.clear_plots()
+        """self.timer.stop()
+        self.obj_det.setEnabled(True)"""
         self.angle = self.set_angle.value()
         x = str(self.angle) + "\n"
         try:
@@ -501,7 +606,8 @@ class App(QtWidgets.QMainWindow):
         xdata_static = float(xdata_static)
         self.x_static = self.x_static[1:] + [xdata_static]
         self.y_static = self.y_static[1:] + [ydata_static]
-        self.h_static.setData(self.x_static, self.y_static)
+        self.h_static.setData(self.x_static[6:7], self.y_static[6:7])
+        self.h_static2.setData(self.x_static[0:5], self.y_static[0:5])
         string_data = str(sensorData)
         dx = ("Distance: " + string_data + " cm")
         self.label2.setText(dx)
@@ -531,6 +637,7 @@ class App(QtWidgets.QMainWindow):
 
             self.xdata5.append(self.xdata4)
             self.h4.setData(self.xdata5, self.ydata5)
+
         elif self.threshold2 < sensorData < self.threshold:
             self.h2.setData(self.ydata, pen=pg.mkPen('r'))
             self.ydata2 = (sensorData * np.cos(self.theta[self.angle]))
