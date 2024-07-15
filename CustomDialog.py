@@ -39,6 +39,17 @@ class CustomDialog(QDialog):
         self.layout.addWidget(message, 1, 0)
         self.layout.addWidget(self.port, 2, 0)
 
+        # CheckBox for plots
+        self.plot1 = QCheckBox("Top Right")
+        self.plot2 = QCheckBox("Bottom Right")
+        self.plot1.setChecked(True)
+        self.plot2.setChecked(True)
+
+        self.layout.addWidget(QLabel("Optional Plots"), 1, 2)
+        self.layout.addWidget(self.plot1, 2, 2)
+        self.layout.addWidget(self.plot2, 3, 2)
+        self.layout.setColumnMinimumWidth(2, 100)
+
         # Threshold Detection Bounds Labels and LineEdits
         self.threshold_bound1 = QLineEdit("20")
         self.threshold_bound2 = QLineEdit("0")
