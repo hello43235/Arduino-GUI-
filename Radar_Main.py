@@ -72,6 +72,8 @@ class App(QtWidgets.QMainWindow):
         self.scan = False
         self.plot1 = None
         self.plot2 = None
+        self.index = None
+        self.s = None
 
         ################################################################################################################
 
@@ -371,16 +373,27 @@ class App(QtWidgets.QMainWindow):
             inputs are valid and accepted. If invalid, reopens dialog box"""
         self.clear_plots()
         dlg = CustomDialog(self)
+        if self.index is not None:
+            dlg.port.setCurrentIndex(self.index)
+            dlg.limit.setText(str(self.s))
+            dlg.detection_radius.setValue(self.det_radius)
+            dlg.threshold_bound1.setText(str(self.threshold))
+            dlg.threshold_bound2.setText(str(self.threshold2))
+            dlg.plot1.setChecked(self.plot1)
+            dlg.plot2.setChecked(self.plot2)
+        else:
+            pass
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
             self.clear_errors()
             try:
                 self.port_name = dlg.port.currentText()
+                self.index = dlg.port.currentIndex()
                 self.threshold = int(dlg.threshold_bound1.text())
                 self.threshold2 = int(dlg.threshold_bound2.text())
-                s = int(dlg.limit.text())
-                self.set_limits(s)
+                self.s = int(dlg.limit.text())
+                self.set_limits(self.s)
                 self.det_radius = dlg.detection_radius.value()
-                if s < self.threshold or s < self.threshold2:
+                if self.s < self.threshold or self.s < self.threshold2:
                     self.clear_errors()
                     self.label3.setText("Error: Threshold Values Out of Range")
                     self.settings()
@@ -396,12 +409,12 @@ class App(QtWidgets.QMainWindow):
                         self.clear_errors()
                         self.label2.setText("Error Invalid Threshold Values")
                         self.settings()
-                self.plot1 = dlg.plot1.checkState()
-                self.plot2 = dlg.plot2.checkState()
+                self.plot1 = dlg.plot1.isChecked()
+                self.plot2 = dlg.plot2.isChecked()
                 print(self.plot1)
                 print(self.plot2)
                 self.checked_plots()
-                self.set_limits(s)
+                self.set_limits(self.s)
             except Exception as a:
                 print(a)
                 self.clear_errors()
@@ -410,7 +423,7 @@ class App(QtWidgets.QMainWindow):
 
     def checked_plots(self):
         #Top Plots
-        if self.plot1 == 0:
+        if self.plot1 is False:
             # Remove Plots
             try:
                 self.canvas.removeItem(self.otherplot)
@@ -424,7 +437,7 @@ class App(QtWidgets.QMainWindow):
             # Add it back
             self.otherplot = self.canvas.addPlot(0, 0, 1, 2)
 
-        elif self.plot1 == 2:
+        elif self.plot1 is True:
             # Remove Plots
             try:
                 self.canvas.removeItem(self.otherplot)
@@ -440,7 +453,7 @@ class App(QtWidgets.QMainWindow):
             self.otherplot2 = self.canvas.addPlot(0, 1)
 
         # Bottom Plots
-        if self.plot2 == 0:
+        if self.plot2 is False:
             # Remove Plots
             try:
                 self.canvas.removeItem(self.otherplot3)
@@ -454,7 +467,7 @@ class App(QtWidgets.QMainWindow):
             # Add it back
             self.otherplot1 = self.canvas.addPlot(1, 0, 1, 2)
 
-        elif self.plot2 == 2:
+        elif self.plot2 is True:
             # Remove Plots
             try:
                 self.canvas.removeItem(self.otherplot1)
@@ -538,12 +551,12 @@ class App(QtWidgets.QMainWindow):
             top_right()
             bot_left()
             bot_right()
-        if self.plot1 == 2:
+        if self.plot1 is True:
             top_left()
             top_right()
         else:
             top_left()
-        if self.plot2 == 2:
+        if self.plot2 is True:
             bot_left()
             bot_right()
         else:

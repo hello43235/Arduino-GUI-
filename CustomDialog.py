@@ -42,8 +42,8 @@ class CustomDialog(QDialog):
         # CheckBox for plots
         self.plot1 = QCheckBox("Top Right")
         self.plot2 = QCheckBox("Bottom Right")
-        self.plot1.setChecked(True)
-        self.plot2.setChecked(True)
+        self.plot1.setTristate(False)
+        self.plot2.setTristate(False)
 
         self.layout.addWidget(QLabel("Optional Plots"), 1, 2)
         self.layout.addWidget(self.plot1, 2, 2)
