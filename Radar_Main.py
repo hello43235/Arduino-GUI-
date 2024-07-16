@@ -259,6 +259,7 @@ class App(QtWidgets.QMainWindow):
             logs data in a .txt file for further use. Function completes 1 scan
             then user must press start button again to complete another scan.
             used in conjunction with 3d scatter.py"""
+        self.obj_det.setEnabled(False)
         if self.angle < (self.det_radius * 10):  # Scan to the preset radius in settings
             arduinoData = self.arduino.readline().decode('ascii')
             sensorData = float(arduinoData)
@@ -270,6 +271,8 @@ class App(QtWidgets.QMainWindow):
             self.radius1.append(sensorData)  # For use in determining threshold
             self.ydata2 = (sensorData * np.cos(self.theta[self.angle]))  # Polar -> Cartesian y-coordinate
             self.xdata2 = (sensorData * np.sin(self.theta[self.angle]))  # Polar -> Cartesian x-coordinate
+            self.ydata2 = float("{:.2f}".format(self.ydata2))
+            self.xdata2 = float("{:.2f}".format(self.xdata2))
             self.ydata3.append(self.ydata2)  # List for y-coordinates
             self.xdata3.append(self.xdata2)  # List for x-coordinates
             self.h4.setData(self.xdata3, self.ydata3)  # Update Bottom Left Plot with data points
@@ -300,7 +303,6 @@ class App(QtWidgets.QMainWindow):
             self.xdata3 = []
             self.ydata3 = []
             self.h4.setData(self.xdata3, self.ydata3)
-            self.obj_det.setEnabled(True)
             self.detection_timer.stop()
             self.scan = False
             self.object_detection()
@@ -388,6 +390,7 @@ class App(QtWidgets.QMainWindow):
                 print(self.plot1)
                 print(self.plot2)
                 self.checked_plots()
+                self.set_limits(s)
             except Exception as a:
                 print(a)
                 self.label2.setText("That's not an integer!")
