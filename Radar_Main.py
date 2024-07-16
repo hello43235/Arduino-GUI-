@@ -233,8 +233,14 @@ class App(QtWidgets.QMainWindow):
         self.h_static.setData()
         self.h_static2.setData()
 
+    def clear_errors(self):
+        self.label.setText("")
+        self.label2.setText("")
+        self.label3.setText("")
+
     def object_detection(self):
         """Turns on object detection mode, connected to _scanning function"""
+        self.clear_errors()
         try:
             self.timer.stop()
             self.angle = 0  # Start scanning from theta = 0
@@ -322,6 +328,7 @@ class App(QtWidgets.QMainWindow):
 
     def connect_arduino(self):
         """Creates a thread to connect to the arduino"""
+        self.clear_errors()
         self.arduino_button.setEnabled(False)
         # 1 - create Worker and Thread inside the Form
         self.obj = SomeObject()  # no parent!
@@ -344,6 +351,7 @@ class App(QtWidgets.QMainWindow):
 
     def export(self):
         """Exports current plots to a png file"""
+        self.clear_errors()
         self.timer.stop()
         dlg = ExportDialog(self)
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
@@ -361,9 +369,10 @@ class App(QtWidgets.QMainWindow):
             for object detection, and a scanning radius. Once the user
             inputs their customizations and hits ok it then checks that all
             inputs are valid and accepted. If invalid, reopens dialog box"""
-        self.timer.stop()
+        self.clear_plots()
         dlg = CustomDialog(self)
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
+            self.clear_errors()
             try:
                 self.port_name = dlg.port.currentText()
                 self.threshold = int(dlg.threshold_bound1.text())
@@ -372,6 +381,7 @@ class App(QtWidgets.QMainWindow):
                 self.set_limits(s)
                 self.det_radius = dlg.detection_radius.value()
                 if s < self.threshold or s < self.threshold2:
+                    self.clear_errors()
                     self.label3.setText("Error: Threshold Values Out of Range")
                     self.settings()
                 else:
@@ -379,10 +389,11 @@ class App(QtWidgets.QMainWindow):
                         pass
                     elif self.threshold < self.threshold2:
                         upper = self.threshold2
-                        lower = self.threshold1
+                        lower = self.threshold
                         self.threshold = upper
                         self.threshold2 = lower
                     else:
+                        self.clear_errors()
                         self.label2.setText("Error Invalid Threshold Values")
                         self.settings()
                 self.plot1 = dlg.plot1.checkState()
@@ -393,6 +404,7 @@ class App(QtWidgets.QMainWindow):
                 self.set_limits(s)
             except Exception as a:
                 print(a)
+                self.clear_errors()
                 self.label2.setText("That's not an integer!")
                 self.settings()
 
@@ -557,6 +569,7 @@ class App(QtWidgets.QMainWindow):
 
     def start_timer(self):
         """Starts the timer for the scanning features"""
+        self.clear_errors()
         self.clear_plots()
         try:
             self.arduino.flushInput()
@@ -574,6 +587,8 @@ class App(QtWidgets.QMainWindow):
 
     def static_angle(self):
         """Starts scanning at a stationary angle only"""
+        self.label2.setText("")
+        self.label3.setText("")
         self.clear_plots()
         """self.timer.stop()
         self.obj_det.setEnabled(True)"""
