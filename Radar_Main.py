@@ -374,13 +374,16 @@ class App(QtWidgets.QMainWindow):
         self.clear_plots()
         dlg = CustomDialog(self)
         if self.index is not None:
-            dlg.port.setCurrentIndex(self.index)
-            dlg.limit.setText(str(self.s))
-            dlg.detection_radius.setValue(self.det_radius)
-            dlg.threshold_bound1.setText(str(self.threshold))
-            dlg.threshold_bound2.setText(str(self.threshold2))
-            dlg.plot1.setChecked(self.plot1)
-            dlg.plot2.setChecked(self.plot2)
+            try:
+                dlg.port.setCurrentIndex(self.index)
+                dlg.limit.setText(str(self.s))
+                dlg.detection_radius.setValue(self.det_radius)
+                dlg.threshold_bound1.setText(str(self.threshold))
+                dlg.threshold_bound2.setText(str(self.threshold2))
+                dlg.plot1.setChecked(self.plot1)
+                dlg.plot2.setChecked(self.plot2)
+            except Exception as a:
+                print(a)
         else:
             pass
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
