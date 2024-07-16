@@ -95,6 +95,7 @@ class App(QtWidgets.QMainWindow):
 
         # Slider for setting angle
         self.set_angle = QSlider(Qt.Orientation.Horizontal)
+        self.set_angle.setToolTip("Sets Static Angle")
         self.set_angle.setRange(0, 180)
         self.set_angle.setSingleStep(1)
         self.set_angle.setTickInterval(1)
@@ -110,43 +111,50 @@ class App(QtWidgets.QMainWindow):
         self.d_symbol = '\u00b0'
 
         # Connect to Arduino Button
-        self.arduino_button = QPushButton("Connect to Arduino")
+        self.arduino_button = QPushButton("Connect to Serial Port")
+        self.arduino_button.setToolTip("Connects to Specified Serial Port")
         self.arduino_button.setMaximumWidth(465)
         self.mainbox.layout().addWidget(self.arduino_button, 3, 1)
         self.arduino_button.clicked.connect(self.connect_arduino)
 
         # Start Button
         self.start_button = QPushButton("Start")
+        self.start_button.setToolTip("Starts Scanning Function")
         self.start_button.setMaximumWidth(465)
         self.mainbox.layout().addWidget(self.start_button, 3, 2)
         self.start_button.clicked.connect(self.start_timer)
 
         # Stop Button
         self.stop_button = QPushButton("Stop")
+        self.stop_button.setToolTip("Stops All Scanning")
         self.stop_button.setMaximumWidth(465)
         self.mainbox.layout().addWidget(self.stop_button, 4, 2)
         self.stop_button.clicked.connect(self.stop_timer)
 
         # Settings Button
         self.settings_button = QPushButton("Settings")
+        self.settings_button.setToolTip("Opens Settings Window")
         self.settings_button.setMaximumWidth(465)
         self.mainbox.layout().addWidget(self.settings_button, 4, 1)
         self.settings_button.clicked.connect(self.settings)
 
         # Export to png
         self.export_button = QPushButton("Export")
+        self.export_button.setToolTip("Opens Export Window")
         self.export_button.setMaximumWidth(465)
         self.mainbox.layout().addWidget(self.export_button, 5, 1)
         self.export_button.clicked.connect(self.export)
 
         # Object Detection
         self.obj_det = QPushButton("Object Scanning")
+        self.obj_det.setToolTip("Sets Object Scanning Mode")
         self.obj_det.setMaximumWidth(465)
         self.mainbox.layout().addWidget(self.obj_det, 5, 2)
         self.obj_det.clicked.connect(self.object_detection)
 
         # Clear Button
         self.clear = QPushButton("Clear Plots")
+        self.clear.setToolTip("Clears All Plots")
         self.clear.setMaximumWidth(465)
         self.mainbox.layout().addWidget(self.clear, 6, 1)
         self.clear.clicked.connect(self.clear_plots)
