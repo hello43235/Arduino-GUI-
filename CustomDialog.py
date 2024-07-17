@@ -9,11 +9,13 @@ class CustomDialog(QDialog):
     def __init__(self, parent=None):
         super(CustomDialog, self).__init__(parent)
 
-        self.setStyleSheet("""QLabel {
-                                    font-size: 10pt;
+        self.setStyleSheet("""QLabel { font-size: 10pt;
                                     }
-                                QComboBox {
-                                    color: white; }""")
+                                QComboBox { color: white;
+                                    }
+                                QComboBox QAbstractItemView {
+                                        color: white;
+                                        }""")
 
         self.setWindowTitle("Enter Arduino Settings")
 
