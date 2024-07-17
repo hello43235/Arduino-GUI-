@@ -214,7 +214,7 @@ class App(QtWidgets.QMainWindow):
         """Turns on object detection mode, connected to _scanning function"""
         self.clear_errors()
         try:
-            self.timer.stop()
+            self.stop_timer()
             self.angle = 0  # Start scanning from theta = 0
             x = str(self.angle) + "\n"
             self.arduino.write(bytes(x.encode()))  # Move servo to angle
@@ -238,11 +238,11 @@ class App(QtWidgets.QMainWindow):
             then user must press start button again to complete another scan.
             used in conjunction with 3d scatter.py"""
         self.obj_det.setEnabled(False)
-        if self.angle < (self.det_radius * 10):  # Scan to the preset radius in settings
+        if self.angle < (self.det_radius * 10) and self.scan is True:  # Scan to the preset radius in settings
             arduinoData = self.arduino.readline().decode('ascii')
             sensorData = float(arduinoData)
-            if sensorData > self.threshold:
-                sensorData = self.threshold
+            if sensorData > self.s:
+                sensorData = self.s
             self.ydata = self.ydata[1:] + [sensorData]
             self.h2.setData(self.ydata, pen=pg.mkPen('g'))  # Plot distance in Top Left Plot
 
@@ -262,7 +262,6 @@ class App(QtWidgets.QMainWindow):
         else:
             self.h9.setData(self.xdata3, self.ydata3)
             self.h10.setData(self.xdata3, self.ydata3)
-            a = (sum(self.radius1) / len(self.radius1))
 
             with open("datax.txt", 'a+', encoding='utf-8') as f:
                 for i in range(len(self.tracking_list_radius)):
@@ -276,14 +275,13 @@ class App(QtWidgets.QMainWindow):
 
             print("Radius: ", self.tracking_list_radius)
             print("Azimuth: ", self.tracking_list_azimuth)
-            self.label2.setText("Threshold: " + str(self.threshold) + " Actual: " + str(a))
             self.radius1 = []
             self.xdata3 = []
             self.ydata3 = []
             self.h4.setData(self.xdata3, self.ydata3)
             self.detection_timer.stop()
-            self.scan = False
-            self.object_detection()
+            if len(self.tracking_list_radius) == (self.det_radius * 10):
+                self.object_detection()
 
     def connect_arduino2(self, s):
         """Connects to an arduino given a port name"""
@@ -570,19 +568,6 @@ class App(QtWidgets.QMainWindow):
     def start_timer(self):
         """Starts the timer for the scanning features"""
         self.clear_errors()
-        self.stop_timer()
-        try:
-            self.arduino.flushInput()
-            if self.scan is False:
-                self.timer.start(1)
-            else:
-                self.detection_timer.start(1)
-        except Exception as a:
-            self.label.setText("Error: " + str(a))
-            self.label2.setText("Error: No Port detected")
-
-    def stop_timer(self):
-        """Stops all live plotting timers"""
         self.timer.stop()
         self.obj_det.setEnabled(True)  # Stop Timers
         self.static_timer.stop()
@@ -599,6 +584,36 @@ class App(QtWidgets.QMainWindow):
         self.h10.setData()
         self.h_static.setData()
         self.h_static2.setData()
+        try:
+            self.arduino.flushInput()
+            if self.scan is False:
+                self.timer.start(1)
+            else:
+                self.detection_timer.start(1)
+        except Exception as a:
+            self.label.setText("Error: " + str(a))
+            self.label2.setText("Error: No Port detected")
+
+    def stop_timer(self):
+        """Stops all live plotting timers"""
+        try:
+            self.angle = 0
+            x = str(self.angle) + "\n"
+            self.arduino.write(bytes(x.encode()))  # Move servo to angle
+        except Exception as a:
+            print(a)
+
+        self.timer.stop()
+        self.obj_det.setEnabled(True)  # Stop Timers
+        self.static_timer.stop()
+        self.scan = False
+
+        self.ydata1 = [0, self.radius[0] * np.sin(self.theta[0])]  # Radar scanner line
+        self.xdata1 = [0, self.radius[0] * np.cos(self.theta[0])]  # initialized at (0, radius)
+        self.ydata3 = []
+        self.xdata3 = []
+        self.ydata5 = []
+        self.xdata5 = []
 
     def static_angle(self):
         """Starts scanning at a stationary angle only"""
