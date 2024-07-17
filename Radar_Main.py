@@ -15,6 +15,7 @@ import serial.tools.list_ports
 from PyQt5.QtCore import QObject, pyqtSignal, QThread, pyqtSlot, Qt
 from PyQt5.QtWidgets import *
 from pyqtgraph.Qt import QtCore, QtWidgets
+from qt_material import apply_stylesheet
 
 from SomeObject import SomeObject
 from ExportDialog import ExportDialog
@@ -28,41 +29,9 @@ class App(QtWidgets.QMainWindow):
         self.setWindowTitle("Arduino Project")
         self.setWindowState(QtCore.Qt.WindowMaximized)
         self.setMinimumSize(711, 400)  # To avoid being resized too small
-        self.setStyleSheet("""QPushButton { background-color: qlineargradient(spread: pad, x1:0,y1:0.5,x2:1,y2:1,
-                                    stop:0 rgb(1, 108, 52),stop:1 rgb(187, 229, 29));
-                                    border-style: outset;
-                                    border-color: green;
-                                    border-width: 2px;
-                                    font: Roboto Mono;
-                                    border-radius: 10px;
-                                    min-width: 10em;
-                                    padding: 6px;
-                                    }
-                                    QPushButton:hover {
-                                    color: white;
-                                    background-color: qlineargradient(spread: pad, x1:0,y1:0.5,x2:1,y2:1,
-                                    stop:0 rgb(52, 1, 108),stop:1 rgb(29, 187, 229));
-                                    border-color: blue;
-                                    }
-                                    QPushButton:disabled {
-                                    color: white;
-                                    background-color: qlineargradient(spread: pad, x1:0,y1:0.5,x2:1,y2:1,
-                                    stop:0 rgb(108, 52, 1),stop:1 rgb(229, 29, 187));
-                                    border-color: red;
-                                    }
-                                    QPushButton:pressed {
-                                    color: white;
-                                    background-color: qlineargradient(spread: pad, x1:0,y1:0.5,x2:1,y2:1,
-                                    stop:0 rgb(108, 52, 1),stop:1 rgb(229, 29, 187));
-                                    border-color: red;
-                                    }
-                                    QMainWindow {
-                                    background-color: grey;
-                                    }
-                                    QLabel {
-                                    font-size: 18pt;
-                                    }
-                                    """)
+        self.setStyleSheet("""QLabel { font-size: 14pt; }
+                            QLineEdit { color: white;
+                                        }""")
 
         self.arduino = None
         self.port_name = None
@@ -605,9 +574,17 @@ class App(QtWidgets.QMainWindow):
         """Starts scanning at a stationary angle only"""
         self.label2.setText("")
         self.label3.setText("")
-        self.clear_plots()
-        """self.timer.stop()
-        self.obj_det.setEnabled(True)"""
+        self.timer.stop()
+        self.obj_det.setEnabled(True)
+        self.h1.setData()
+        self.h3.setData()
+        self.h4.setData()
+        self.h5.setData()
+        self.h6.setData()
+        self.h7.setData()
+        self.h8.setData()
+        self.h9.setData()
+        self.h10.setData()
         self.angle = self.set_angle.value()
         x = str(self.angle) + "\n"
         try:
@@ -750,6 +727,7 @@ class App(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
+    apply_stylesheet(app, theme='dark_lightgreen.xml')
     thisapp = App()
     thisapp.show()
     sys.exit(app.exec_())

@@ -9,7 +9,11 @@ class CustomDialog(QDialog):
     def __init__(self, parent=None):
         super(CustomDialog, self).__init__(parent)
 
-        self.setStyleSheet("""QLabel {font-size: 10pt;}""")
+        self.setStyleSheet("""QLabel {
+                                    font-size: 10pt;
+                                    }
+                                QComboBox {
+                                    color: white; }""")
 
         self.setWindowTitle("Enter Arduino Settings")
 
@@ -44,6 +48,8 @@ class CustomDialog(QDialog):
         self.plot2 = QCheckBox("Bottom Right")
         self.plot1.setTristate(False)
         self.plot2.setTristate(False)
+        self.plot1.setChecked(True)
+        self.plot2.setChecked(True)
 
         self.layout.addWidget(QLabel("Optional Plots"), 1, 2)
         self.layout.addWidget(self.plot1, 2, 2)
