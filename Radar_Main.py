@@ -124,11 +124,11 @@ class App(QtWidgets.QMainWindow):
         self.obj_det.clicked.connect(self.object_detection)
 
         # Clear Button
-        self.clear = QPushButton("Clear Plots")
-        self.clear.setToolTip("Clears All Plots")
-        self.clear.setMaximumWidth(465)
-        self.mainbox.layout().addWidget(self.clear, 6, 1)
-        self.clear.clicked.connect(self.clear_plots)
+        self.reset = QPushButton("Reset Plots")
+        self.reset.setToolTip("Resets All Plots")
+        self.reset.setMaximumWidth(465)
+        self.mainbox.layout().addWidget(self.reset, 6, 1)
+        self.reset.clicked.connect(self.reset_plots)
 
         ################################################################################################################
 
@@ -185,7 +185,7 @@ class App(QtWidgets.QMainWindow):
         #Plot Items
         self.plot_items()
 
-    def clear_plots(self):
+    def reset_plots(self):
         """Stops all timers and clears all plots. Functionally a reset button"""
         self.timer.stop()
         self.obj_det.setEnabled(True)  # Stop Timers
@@ -203,6 +203,7 @@ class App(QtWidgets.QMainWindow):
         self.h10.setData()
         self.h_static.setData()
         self.h_static2.setData()
+        self.set_limits(self.s)
 
     def clear_errors(self):
         self.label.setText("")
@@ -340,7 +341,7 @@ class App(QtWidgets.QMainWindow):
             for object detection, and a scanning radius. Once the user
             inputs their customizations and hits ok it then checks that all
             inputs are valid and accepted. If invalid, reopens dialog box"""
-        self.clear_plots()
+        self.stop_timer()
         dlg = CustomDialog(self)
         if self.index is not None:
             try:
@@ -537,25 +538,39 @@ class App(QtWidgets.QMainWindow):
     def set_limits(self, s):
         """Sets limits of each plot according to the maximum range specified
             in the settings dialog box"""
-        self.otherplot.showGrid(x=True, y=True)
-        self.otherplot.setYRange(0, s, padding=0)
+        try:
+            self.otherplot.showGrid(x=True, y=True)
+            self.otherplot.setYRange(0, s, padding=0)
 
-        self.otherplot1.setYRange(0, s, padding=0)  # Bottom Left Plot
-        self.otherplot1.setXRange(-s, s, padding=0)  # Bottom Left Plot
+            self.otherplot1.setYRange(0, s, padding=0)  # Bottom Left Plot
+            self.otherplot1.setXRange(-s, s, padding=0)  # Bottom Left Plot
 
-        self.otherplot2.setYRange(0, s, padding=0)  # Top Right Plot
-        self.otherplot2.setXRange(-s, s, padding=0)  # Top Right Plot
+            self.otherplot2.setYRange(0, s, padding=0)  # Top Right Plot
+            self.otherplot2.setXRange(-s, s, padding=0)  # Top Right Plot
 
-        self.otherplot3.setYRange(0, s, padding=0)  # Bottom Right Plot
-        self.otherplot3.setXRange(-s, s, padding=0)  # Bottom Right Plot
+            self.otherplot3.setYRange(0, s, padding=0)  # Bottom Right Plot
+            self.otherplot3.setXRange(-s, s, padding=0)  # Bottom Right Plot
 
-        self.radius = [s for _ in range(181)]
-        self.detection_range = s
+            self.radius = [s for _ in range(181)]
+            self.detection_range = s
+        except Exception as a:
+            print(a)
+            self.otherplot.showGrid(x=True, y=True)
+            self.otherplot.setYRange(0, 90, padding=0)
+
+            self.otherplot1.setYRange(0, 90, padding=0)  # Bottom Left Plot
+            self.otherplot1.setXRange(-90, 90, padding=0)  # Bottom Left Plot
+
+            self.otherplot2.setYRange(0, 90, padding=0)  # Top Right Plot
+            self.otherplot2.setXRange(-90, 90, padding=0)  # Top Right Plot
+
+            self.otherplot3.setYRange(0, 90, padding=0)  # Bottom Right Plot
+            self.otherplot3.setXRange(-90, 90, padding=0)  # Bottom Right Plot
 
     def start_timer(self):
         """Starts the timer for the scanning features"""
         self.clear_errors()
-        self.clear_plots()
+        self.stop_timer()
         try:
             self.arduino.flushInput()
             if self.scan is False:
@@ -568,7 +583,22 @@ class App(QtWidgets.QMainWindow):
 
     def stop_timer(self):
         """Stops all live plotting timers"""
-        self.clear_plots()
+        self.timer.stop()
+        self.obj_det.setEnabled(True)  # Stop Timers
+        self.static_timer.stop()
+
+        self.h1.setData()
+        self.h2.setData()
+        self.h3.setData()
+        self.h4.setData()
+        self.h5.setData()
+        self.h6.setData()  # Clear All Plots
+        self.h7.setData()
+        self.h8.setData()
+        self.h9.setData()
+        self.h10.setData()
+        self.h_static.setData()
+        self.h_static2.setData()
 
     def static_angle(self):
         """Starts scanning at a stationary angle only"""
