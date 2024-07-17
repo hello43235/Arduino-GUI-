@@ -620,7 +620,14 @@ class App(QtWidgets.QMainWindow):
         self.label2.setText("")
         self.label3.setText("")
         self.timer.stop()
+        self.detection_timer.stop()
         self.obj_det.setEnabled(True)
+        self.scan = False
+        self.xdata3 = []
+        self.ydata3 = []
+        self.xdata5 = []
+        self.ydata5 = []
+
         self.h1.setData()
         self.h3.setData()
         self.h4.setData()
