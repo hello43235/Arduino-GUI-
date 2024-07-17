@@ -188,7 +188,7 @@ class App(QtWidgets.QMainWindow):
     def reset_plots(self):
         """Stops all timers and clears all plots. Functionally a reset button"""
         self.timer.stop()
-        self.scan = false
+        self.scan = False
         self.obj_det.setEnabled(True)  # Stop Timers
         self.static_timer.stop()
 
