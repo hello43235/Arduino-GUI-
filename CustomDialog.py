@@ -1,6 +1,6 @@
 import serial
 import serial.tools.list_ports
-from pyqtgraph.Qt import QtCore, QtWidgets
+from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt
 
@@ -94,5 +94,48 @@ class CustomDialog(QDialog):
 
         self.layout.addWidget(self.buttonBox, 7, 0, 1, 2, QtCore.Qt.AlignmentFlag.AlignCenter)
 
+        # Validator
+        validator = QtGui.QIntValidator()
+        validator.setRange(0, 800)
+        self.limit.setValidator(validator)
+        self.threshold_bound1.setValidator(validator)
+        self.threshold_bound2.setValidator(validator)
+
+        self.limit.inputRejected.connect(self.accept_criteria)
+        self.threshold_bound1.inputRejected.connect(self.accept_criteria)
+        self.threshold_bound2.inputRejected.connect(self.accept_criteria)
+
+        self.limit.textChanged.connect(self.range_check)
+        self.threshold_bound1.textChanged.connect(self.range_check)
+        self.threshold_bound2.textChanged.connect(self.range_check)
+
     def update_value(self):
         self.detection_label.setText("Enter The Scanning Radius (degrees): " + str(self.detection_radius.value() * 10))
+
+    def accept_criteria(self):
+        if self.limit.hasAcceptableInput() is False:
+            self.limit.setText("")
+        if self.threshold_bound1.hasAcceptableInput() is False:
+            self.threshold_bound1.setText("")
+        if self.threshold_bound2.hasAcceptableInput() is False:
+            self.threshold_bound2.setText("")
+
+    def range_check(self):
+        try:
+            a = int(self.limit.text())
+            if a > 800:
+                self.limit.setText("")
+        except Exception as d:
+            print(d)
+        try:
+            b = int(self.threshold_bound1.text())
+            if b > 800:
+                self.threshold_bound1.setText("")
+        except Exception as e:
+            print(e)
+        try:
+            c = int(self.threshold_bound2.text())
+            if c > 800:
+                self.threshold_bound2.setText("")
+        except Exception as f:
+            print(f)
