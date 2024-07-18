@@ -43,6 +43,8 @@ class App(QtWidgets.QMainWindow):
         self.plot2 = None
         self.index = None
         self.s = None
+        self.multiplier = 2
+        self.angle_multiplier = 1
 
         ################################################################################################################
 
@@ -52,17 +54,25 @@ class App(QtWidgets.QMainWindow):
         self.mainbox.setLayout(QtWidgets.QGridLayout())
 
         self.canvas = pg.GraphicsLayoutWidget(title="Ultrasonic Sensor")  # Contains all the plots in a gridlayout
-
+        self.canvas.setStyleSheet("border-color: #8bc34a;")
         self.mainbox.layout().addWidget(self.canvas, 0, 0, 2, 3)
 
         # Labels for User Communication
         self.label = QtWidgets.QLabel()  # First Label
         self.label.setMaximumHeight(30)
-        self.mainbox.layout().addWidget(self.label, 2, 0)
+        # self.mainbox.layout().addWidget(self.label, 2, 0)
         self.label2 = QtWidgets.QLabel()  # Second Label
-        self.mainbox.layout().addWidget(self.label2, 3, 0)
+        # self.mainbox.layout().addWidget(self.label2, 3, 0)
         self.label3 = QtWidgets.QLabel()  # Third Label
-        self.mainbox.layout().addWidget(self.label3, 4, 0)
+        # self.mainbox.layout().addWidget(self.label3, 4, 0)
+
+        self.box = QGroupBox("User Communication")
+        self.box_layout = QVBoxLayout()
+        self.box_layout.addWidget(self.label)
+        self.box_layout.addWidget(self.label2)
+        self.box_layout.addWidget(self.label3)
+        self.box.setLayout(self.box_layout)
+        self.mainbox.layout().addWidget(self.box, 2, 0, 5, 1)
 
         # Slider for setting angle
         self.set_angle = QSlider(Qt.Orientation.Horizontal)
@@ -127,8 +137,24 @@ class App(QtWidgets.QMainWindow):
         self.reset = QPushButton("Reset Plots")
         self.reset.setToolTip("Resets All Plots")
         self.reset.setMaximumWidth(465)
+        self.reset.setMaximumHeight(95)
         self.mainbox.layout().addWidget(self.reset, 6, 1)
         self.reset.clicked.connect(self.reset_plots)
+
+        # Speed Group Box
+        self.speed_box = QGroupBox("Set Scan Speed")
+        self.speed_box.setMaximumHeight(95)
+        self.speed_box_layout = QHBoxLayout()
+        self.speed1 = QRadioButton("1x")
+        self.speed2 = QRadioButton("2x")
+        self.speed_box_layout.addWidget(self.speed1)
+        self.speed_box_layout.addWidget(self.speed2)
+        self.speed_box.setLayout(self.speed_box_layout)
+        self.mainbox.layout().addWidget(self.speed_box, 6, 2)
+        self.speed1.setChecked(True)
+
+        self.speed1.toggled.connect(self.set_speed)
+        self.speed2.toggled.connect(self.set_speed)
 
         ################################################################################################################
 
@@ -147,8 +173,8 @@ class App(QtWidgets.QMainWindow):
         # Set Data  #####################
 
         # Bottom Plot Variables
-        self.theta = np.linspace(np.pi / -2, np.pi / 2, 181)
-        self.radius = [180 for _ in range(181)]
+        self.theta = np.linspace(np.pi / -2, np.pi / 2, 180 * self.multiplier + 1)
+        self.radius = [180 for _ in range(180 * self.multiplier + 1)]
 
         self.ydata1 = [0, self.radius[0] * np.sin(self.theta[0])]  # Radar scanner line
         self.xdata1 = [0, self.radius[0] * np.cos(self.theta[0])]  # initialized at (0, radius)
@@ -166,7 +192,7 @@ class App(QtWidgets.QMainWindow):
         self.threshold2 = None
 
         # Top Plot Variables
-        self.ydata = [0 for _ in range(200)]  # Sets the x range for Top Left Plot
+        self.ydata = [0 for _ in range(200 * self.multiplier)]  # Sets the x range for Top Left Plot
         self.counter = 0
 
         # For Frame Rate Calculations
@@ -185,11 +211,31 @@ class App(QtWidgets.QMainWindow):
         #Plot Items
         self.plot_items()
 
+    def set_speed(self):
+        if self.speed2.isChecked() is True:
+            self.multiplier = 1
+            self.angle_multiplier = 2
+
+            self.theta = np.linspace(np.pi / -2, np.pi / 2, 180 * self.multiplier + 1)
+            self.radius = [180 for _ in range(180 * self.multiplier + 1)]
+            self.radius = [self.s for _ in range(180 * self.multiplier + 1)]
+            self.ydata = [0 for _ in range(200 * self.multiplier)]
+        elif self.speed1.isChecked() is True:
+            self.multiplier = 2
+            self.angle_multiplier = 1
+
+            self.theta = np.linspace(np.pi / -2, np.pi / 2, 180 * self.multiplier + 1)
+            self.radius = [180 for _ in range(180 * self.multiplier + 1)]
+            self.radius = [self.s for _ in range(180 * self.multiplier + 1)]
+            self.ydata = [0 for _ in range(200 * self.multiplier)]
+
     def reset_plots(self):
         """Stops all timers and clears all plots. Functionally a reset button"""
         self.timer.stop()
         self.scan = False
         self.obj_det.setEnabled(True)  # Stop Timers
+        self.speed1.setEnabled(True)
+        self.speed2.setEnabled(True)
         self.static_timer.stop()
 
         self.h1.setData()
@@ -222,6 +268,8 @@ class App(QtWidgets.QMainWindow):
             self.tracking_list_radius = []
             self.tracking_list_azimuth = []
             self.scan = True
+            self.speed1.setEnabled(False)
+            self.speed2.setEnabled(False)
             self.obj_det.setEnabled(False)  # Disable further user input with button
             self.xdata3 = []
             self.ydata3 = []
@@ -235,10 +283,12 @@ class App(QtWidgets.QMainWindow):
 
     def _scanning(self):
         """Completes 1 sweep from 0 degrees to set radius. While scanning also
-            logs data in a .txt file for further use. Function completes 1 scan
+            logs data in a .txt file for additional use. Function completes 1 scan
             then user must press start button again to complete another scan.
             used in conjunction with 3d scatter.py"""
         self.obj_det.setEnabled(False)
+        self.speed1.setEnabled(False)
+        self.speed2.setEnabled(False)
         if self.angle < (self.det_radius * 10) and self.scan is True:  # Scan to the preset radius in settings
             arduinoData = self.arduino.readline().decode('ascii')
             sensorData = float(arduinoData)
@@ -248,14 +298,14 @@ class App(QtWidgets.QMainWindow):
             self.h2.setData(self.ydata, pen=pg.mkPen('g'))  # Plot distance in Top Left Plot
 
             self.radius1.append(sensorData)  # For use in determining threshold
-            self.ydata2 = (sensorData * np.cos(self.theta[self.angle]))  # Polar -> Cartesian y-coordinate
-            self.xdata2 = (sensorData * np.sin(self.theta[self.angle]))  # Polar -> Cartesian x-coordinate
+            self.ydata2 = (sensorData * np.cos(self.theta[int(self.angle * self.multiplier)]))  # Polar -> Cartesian
+            self.xdata2 = (sensorData * np.sin(self.theta[int(self.angle * self.multiplier)]))  # Polar -> Cartesian
             self.ydata2 = float("{:.2f}".format(self.ydata2))
             self.xdata2 = float("{:.2f}".format(self.xdata2))
             self.ydata3.append(self.ydata2)  # List for y-coordinates
             self.xdata3.append(self.xdata2)  # List for x-coordinates
             self.h4.setData(self.xdata3, self.ydata3)  # Update Bottom Left Plot with data points
-            self.angle += 1
+            self.angle += 0.5 * self.angle_multiplier
             x = str(self.angle) + "\n"
             self.arduino.write(bytes(x.encode()))
             self.tracking_list_radius.append(self.xdata2)  # Array of coordinates for further use
@@ -281,7 +331,7 @@ class App(QtWidgets.QMainWindow):
             self.ydata3 = []
             self.h4.setData(self.xdata3, self.ydata3)
             self.detection_timer.stop()
-            if len(self.tracking_list_radius) == (self.det_radius * 10):
+            if len(self.tracking_list_radius) == (self.det_radius * 10 * self.multiplier):
                 self.object_detection()
 
     def connect_arduino2(self, s):
@@ -368,6 +418,9 @@ class App(QtWidgets.QMainWindow):
                 if self.s < self.threshold or self.s < self.threshold2:
                     self.clear_errors()
                     self.label3.setText("Error: Threshold Values Out of Range")
+                    self.threshold = 20
+                    self.threshold2 = 0
+                    self.s = 50
                     self.settings()
                 else:
                     if self.threshold > self.threshold2:
@@ -379,6 +432,9 @@ class App(QtWidgets.QMainWindow):
                         self.threshold2 = lower
                     else:
                         self.clear_errors()
+                        self.threshold = 20
+                        self.threshold2 = 0
+                        self.s = 50
                         self.label2.setText("Error Invalid Threshold Values")
                         self.settings()
                 self.plot1 = dlg.plot1.isChecked()
@@ -390,6 +446,7 @@ class App(QtWidgets.QMainWindow):
             except Exception as a:
                 print(a)
                 self.clear_errors()
+                self.s = 50
                 self.label2.setText("That's not an integer!")
                 self.settings()
 
@@ -467,7 +524,7 @@ class App(QtWidgets.QMainWindow):
 
         def top_right():
             # Top Right Plot
-            self.h5 = self.otherplot2.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
+            self.h5 = self.otherplot2.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=2, symbolPen=None)
             self.h6 = self.otherplot2.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
             self.h9 = self.otherplot2.plot(pen='g')
 
@@ -485,7 +542,7 @@ class App(QtWidgets.QMainWindow):
         def bot_left():
             # Bottom Left Plot
             self.h1 = self.otherplot1.plot(pen='g')
-            self.h3 = self.otherplot1.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
+            self.h3 = self.otherplot1.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=2, symbolPen=None)
             self.h4 = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
             self.h_static = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=5, symbolPen=None)
             self.h_static2 = self.otherplot1.plot([], pen=None, symbolBrush=(255, 255, 0), symbolSize=2, symbolPen=None)
@@ -503,7 +560,7 @@ class App(QtWidgets.QMainWindow):
 
         def bot_right():
             # Bottom Right Plot
-            self.h7 = self.otherplot3.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=3, symbolPen=None)
+            self.h7 = self.otherplot3.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=2, symbolPen=None)
             self.h8 = self.otherplot3.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
             self.h10 = self.otherplot3.plot(pen='g')
 
@@ -550,7 +607,7 @@ class App(QtWidgets.QMainWindow):
             self.otherplot3.setYRange(0, s, padding=0)  # Bottom Right Plot
             self.otherplot3.setXRange(-s, s, padding=0)  # Bottom Right Plot
 
-            self.radius = [s for _ in range(181)]
+            self.radius = [s for _ in range(180 * self.multiplier + 1)]
             self.detection_range = s
         except Exception as a:
             print(a)
@@ -571,6 +628,8 @@ class App(QtWidgets.QMainWindow):
         self.clear_errors()
         self.timer.stop()
         self.obj_det.setEnabled(True)  # Stop Timers
+        self.speed1.setEnabled(True)
+        self.speed2.setEnabled(True)
         self.static_timer.stop()
 
         self.h1.setData()
@@ -606,6 +665,8 @@ class App(QtWidgets.QMainWindow):
 
         self.timer.stop()
         self.obj_det.setEnabled(True)  # Stop Timers
+        self.speed1.setEnabled(True)
+        self.speed2.setEnabled(True)
         self.static_timer.stop()
         self.scan = False
 
@@ -618,11 +679,12 @@ class App(QtWidgets.QMainWindow):
 
     def static_angle(self):
         """Starts scanning at a stationary angle only"""
-        self.label2.setText("")
         self.label3.setText("")
         self.timer.stop()
         self.detection_timer.stop()
         self.obj_det.setEnabled(True)
+        self.speed1.setEnabled(True)
+        self.speed2.setEnabled(True)
         self.scan = False
         self.xdata3 = []
         self.ydata3 = []
@@ -643,7 +705,6 @@ class App(QtWidgets.QMainWindow):
         try:
             self.arduino.write(bytes(x.encode()))
             self.label.setText("Angle: " + str(self.angle) + self.d_symbol)
-            self.label2.clear()
         except Exception as a:
             print(a)
             self.label2.setText("Error: Not Connected")
@@ -668,12 +729,14 @@ class App(QtWidgets.QMainWindow):
         # Line Plot
         if self.threshold <= sensorData <= self.detection_range or sensorData <= self.threshold2:
             self.h2.setData(self.ydata, pen=pg.mkPen('g'))
+            self.box.setStyleSheet("background-color: #31363b")
         elif self.threshold2 < sensorData < self.threshold:
             self.h2.setData(self.ydata, pen=pg.mkPen('r'))
+            self.box.setStyleSheet("background-color: #800000;")
         self.angle = int(self.angle)
         # Bottom Left Plot
-        ydata_static = (sensorData * np.cos(self.theta[self.angle]))  # Polar -> Cartesian y-coordinate
-        xdata_static = (sensorData * np.sin(self.theta[self.angle]))  # Polar -> Cartesian x-coordinate
+        ydata_static = (sensorData * np.cos(self.theta[int(self.angle * self.multiplier)]))  # Polar -> Cartesian
+        xdata_static = (sensorData * np.sin(self.theta[int(self.angle * self.multiplier)]))  # Polar -> Cartesian
         ydata_static = float(ydata_static)
         xdata_static = float(xdata_static)
         self.x_static = self.x_static[1:] + [xdata_static]
@@ -702,26 +765,26 @@ class App(QtWidgets.QMainWindow):
 
         if self.threshold <= sensorData <= self.detection_range or sensorData <= self.threshold2:
             self.h2.setData(self.ydata, pen=pg.mkPen('g'))
-            self.ydata4 = (sensorData * np.cos(self.theta[self.angle]))
+            self.ydata4 = (sensorData * np.cos(self.theta[int(self.angle * self.multiplier)]))
 
             self.ydata5.append(self.ydata4)
-            self.xdata4 = (sensorData * np.sin(self.theta[self.angle]))
+            self.xdata4 = (sensorData * np.sin(self.theta[int(self.angle * self.multiplier)]))
 
             self.xdata5.append(self.xdata4)
             self.h4.setData(self.xdata5, self.ydata5)
+            self.box.setStyleSheet("background-color: #31363b")
 
         elif self.threshold2 < sensorData < self.threshold:
             self.h2.setData(self.ydata, pen=pg.mkPen('r'))
-            self.ydata2 = (sensorData * np.cos(self.theta[self.angle]))
+            self.ydata2 = (sensorData * np.cos(self.theta[int(self.angle * self.multiplier)]))
 
             self.ydata3.append(self.ydata2)
-            self.xdata2 = (sensorData * np.sin(self.theta[self.angle]))
+            self.xdata2 = (sensorData * np.sin(self.theta[int(self.angle * self.multiplier)]))
 
             self.xdata3.append(self.xdata2)
             self.h3.setData(self.xdata3, self.ydata3)
-
+            self.box.setStyleSheet("background-color: #800000;")
         if self.angle >= (self.det_radius * 10):
-            self.now_then2 = time.time()
             self.iter = True
             self.h5.setData(self.xdata3, self.ydata3)  # Top Right Plot Red
             self.h6.setData(self.xdata5, self.ydata5)  # Top Right Plot Green
@@ -731,10 +794,7 @@ class App(QtWidgets.QMainWindow):
             self.h4.setData()
             self.xdata5 = []
             self.ydata5 = []
-            sweep_time = (time.time() - self.now_then)
-            self.label3.setText("Time Taken For 1 Sweep: {0:.2f}".format(sweep_time) + " seconds")
         elif self.angle <= 0:
-            self.now_then = time.time()
             self.iter = False
             self.h7.setData(self.xdata3, self.ydata3)  # Bottom Right Plot Red
             self.h8.setData(self.xdata5, self.ydata5)  # Bottom Right Plot Green
@@ -744,19 +804,19 @@ class App(QtWidgets.QMainWindow):
             self.h4.setData()
             self.xdata5 = []
             self.ydata5 = []
-            sweep_time2 = (time.time() - self.now_then2)
-            self.label3.setText("Time Taken For 1 Sweep: {0:.2f}".format(sweep_time2) + " seconds")
         if self.iter is False:
-            self.angle += 1
+            self.angle += 0.5 * self.angle_multiplier
         else:
-            self.angle -= 1
+            self.angle -= 0.5 * self.angle_multiplier
         x = str(self.angle) + "\n"
         self.arduino.write(bytes(x.encode()))
 
-        self.label.setText("Angle: " + x + self.d_symbol)
+        self.label3.setText("Angle: " + str(self.angle) + self.d_symbol)
 
-        self.ydata1 = [0, self.radius[self.angle] * np.cos(self.theta[self.angle])]
-        self.xdata1 = [0, self.radius[self.angle] * np.sin(self.theta[self.angle])]
+        self.ydata1 = [0, self.radius[int(self.angle * self.multiplier)]
+                       * np.cos(self.theta[int(self.angle * self.multiplier)])]
+        self.xdata1 = [0, self.radius[int(self.angle * self.multiplier)]
+                       * np.sin(self.theta[int(self.angle * self.multiplier)])]
 
         self.h1.setData(self.xdata1, self.ydata1)
 
