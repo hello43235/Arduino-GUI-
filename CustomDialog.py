@@ -2,20 +2,17 @@ import serial
 import serial.tools.list_ports
 from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
+from qt_material import list_themes
 
 
 class CustomDialog(QDialog):
+    new_theme = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super(CustomDialog, self).__init__(parent)
 
-        self.setStyleSheet("""QLabel { font-size: 10pt;
-                                    }
-                                QComboBox { color: white;
-                                    }
-                                QComboBox QAbstractItemView {
-                                        color: white;
-                                        }""")
+        self.setStyleSheet("""QLabel { font-size: 10pt; }""")
 
         self.setWindowTitle("Enter Arduino Settings")
 
@@ -57,6 +54,20 @@ class CustomDialog(QDialog):
         self.layout.addWidget(self.plot1, 2, 2)
         self.layout.addWidget(self.plot2, 3, 2)
         self.layout.setColumnMinimumWidth(2, 100)
+
+        # ComboBox for theme colors
+        self.color_label = QLabel("Color Theme")
+        self.colors = QComboBox()
+        self.themes = list_themes()
+
+        for i in range(len(self.themes)):
+            x = self.themes[i]
+            x = x.replace("_", " ")
+            x = x.replace(".xml", "")
+            self.colors.addItem(x)
+        self.layout.addWidget(self.color_label, 4, 2)
+        self.layout.addWidget(self.colors, 5, 2)
+        self.colors.currentIndexChanged.connect(self.theme_change)
 
         # Threshold Detection Bounds Labels and LineEdits
         self.threshold_bound1 = QLineEdit("20")
@@ -139,3 +150,7 @@ class CustomDialog(QDialog):
                 self.threshold_bound2.setText("")
         except Exception as f:
             print(f)
+
+    @pyqtSlot()
+    def theme_change(self):
+        self.new_theme.emit(self.themes[self.colors.currentIndex()])

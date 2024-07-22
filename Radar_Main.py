@@ -15,23 +15,23 @@ import serial.tools.list_ports
 from PyQt5.QtCore import QObject, pyqtSignal, QThread, pyqtSlot, Qt
 from PyQt5.QtWidgets import *
 from pyqtgraph.Qt import QtCore, QtWidgets
-from qt_material import apply_stylesheet
+from qt_material import apply_stylesheet, list_themes
 
 from SomeObject import SomeObject
 from ExportDialog import ExportDialog
 from CustomDialog import CustomDialog
 
-
 # noinspection PyArgumentList,PyStatementEffect
+stylesheet = list_themes()
+
+
 class App(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(App, self).__init__(parent)
         self.setWindowTitle("Arduino Project")
         self.setWindowState(QtCore.Qt.WindowMaximized)
-        self.setMinimumSize(711, 400)  # To avoid being resized too small
-        self.setStyleSheet("""QLabel { font-size: 14pt; }
-                            QLineEdit { color: white;
-                                        }""")
+        self.setMinimumSize(711, 600)  # To avoid being resized too small
+        self.setStyleSheet("""QLabel { font-size: 14pt; } """)
 
         self.arduino = None
         self.port_name = None
@@ -43,6 +43,8 @@ class App(QtWidgets.QMainWindow):
         self.plot2 = None
         self.index = None
         self.s = None
+        self.color_index = None
+        self.current_color = stylesheet[0]
         self.multiplier = 2
         self.angle_multiplier = 1
 
@@ -54,7 +56,6 @@ class App(QtWidgets.QMainWindow):
         self.mainbox.setLayout(QtWidgets.QGridLayout())
 
         self.canvas = pg.GraphicsLayoutWidget(title="Ultrasonic Sensor")  # Contains all the plots in a gridlayout
-        self.canvas.setStyleSheet("border-color: #8bc34a;")
         self.mainbox.layout().addWidget(self.canvas, 0, 0, 2, 3)
 
         # Labels for User Communication
@@ -392,9 +393,11 @@ class App(QtWidgets.QMainWindow):
             inputs are valid and accepted. If invalid, reopens dialog box"""
         self.stop_timer()
         dlg = CustomDialog(self)
+        dlg.new_theme.connect(self.new_stylesheet)
         if self.index is not None:
             try:
                 dlg.port.setCurrentIndex(self.index)
+                dlg.colors.setCurrentIndex(self.color_index)
                 dlg.limit.setText(str(self.s))
                 dlg.detection_radius.setValue(self.det_radius)
                 dlg.threshold_bound1.setText(str(self.threshold))
@@ -410,6 +413,7 @@ class App(QtWidgets.QMainWindow):
             try:
                 self.port_name = dlg.port.currentText()
                 self.index = dlg.port.currentIndex()
+                self.color_index = dlg.colors.currentIndex()
                 self.threshold = int(dlg.threshold_bound1.text())
                 self.threshold2 = int(dlg.threshold_bound2.text())
                 self.s = int(dlg.limit.text())
@@ -439,8 +443,8 @@ class App(QtWidgets.QMainWindow):
                         self.settings()
                 self.plot1 = dlg.plot1.isChecked()
                 self.plot2 = dlg.plot2.isChecked()
-                print(self.plot1)
-                print(self.plot2)
+                print("Plot1 checked: ", self.plot1)
+                print("Plot2 checked: ", self.plot2)
                 self.checked_plots()
                 self.set_limits(self.s)
             except Exception as a:
@@ -449,6 +453,12 @@ class App(QtWidgets.QMainWindow):
                 self.s = 50
                 self.label2.setText("That's not an integer!")
                 self.settings()
+        else:
+            self.color_index = dlg.colors.currentIndex()
+
+    def new_stylesheet(self, f):
+        self.current_color = f
+        apply_stylesheet(app, theme=f)
 
     def checked_plots(self):
         #Top Plots
@@ -729,10 +739,8 @@ class App(QtWidgets.QMainWindow):
         # Line Plot
         if self.threshold <= sensorData <= self.detection_range or sensorData <= self.threshold2:
             self.h2.setData(self.ydata, pen=pg.mkPen('g'))
-            self.box.setStyleSheet("background-color: #31363b")
         elif self.threshold2 < sensorData < self.threshold:
             self.h2.setData(self.ydata, pen=pg.mkPen('r'))
-            self.box.setStyleSheet("background-color: #800000;")
         self.angle = int(self.angle)
         # Bottom Left Plot
         ydata_static = (sensorData * np.cos(self.theta[int(self.angle * self.multiplier)]))  # Polar -> Cartesian
@@ -772,7 +780,6 @@ class App(QtWidgets.QMainWindow):
 
             self.xdata5.append(self.xdata4)
             self.h4.setData(self.xdata5, self.ydata5)
-            self.box.setStyleSheet("background-color: #31363b")
 
         elif self.threshold2 < sensorData < self.threshold:
             self.h2.setData(self.ydata, pen=pg.mkPen('r'))
@@ -783,7 +790,6 @@ class App(QtWidgets.QMainWindow):
 
             self.xdata3.append(self.xdata2)
             self.h3.setData(self.xdata3, self.ydata3)
-            self.box.setStyleSheet("background-color: #800000;")
         if self.angle >= (self.det_radius * 10):
             self.iter = True
             self.h5.setData(self.xdata3, self.ydata3)  # Top Right Plot Red
@@ -840,7 +846,7 @@ class App(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    apply_stylesheet(app, theme='dark_lightgreen.xml')
+    apply_stylesheet(app, theme=stylesheet[3])
     thisapp = App()
     thisapp.show()
     sys.exit(app.exec_())
