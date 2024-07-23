@@ -5,6 +5,7 @@
 ##################################################################
 
 import sys
+import os
 import time
 
 import numpy as np
@@ -12,24 +13,31 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 import serial
 import serial.tools.list_ports
-from PyQt5.QtCore import QObject, pyqtSignal, QThread, pyqtSlot, Qt
+from PyQt5.QtCore import QObject, pyqtSignal, QThread, pyqtSlot, Qt, QEvent
 from PyQt5.QtWidgets import *
+from PyQt5.QtGui import QCursor, QPixmap
 from pyqtgraph.Qt import QtCore, QtWidgets
 from qt_material import apply_stylesheet, list_themes
 
 from SomeObject import SomeObject
 from ExportDialog import ExportDialog
 from CustomDialog import CustomDialog
+from MyBar import MyBar
 
 # noinspection PyArgumentList,PyStatementEffect
 stylesheet = list_themes()
 
 
+# noinspection PyArgumentList
 class App(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(App, self).__init__(parent)
         self.setWindowTitle("Arduino Project")
-        self.setWindowState(QtCore.Qt.WindowMaximized)
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.titleBar = MyBar(self)
+        self.setContentsMargins(0, self.titleBar.height(), 0, 0)
+        self.resize(640, self.titleBar.height() + 480)
+        # self.setWindowState(QtCore.Qt.WindowMaximized)
         self.setMinimumSize(711, 600)  # To avoid being resized too small
         self.setStyleSheet("""QLabel { font-size: 14pt; } """)
 
@@ -42,12 +50,19 @@ class App(QtWidgets.QMainWindow):
         self.plot1 = None
         self.plot2 = None
         self.index = None
-        self.s = None
+        self.s = 90
         self.color_index = None
         self.current_color = stylesheet[0]
+        self.prim_col = os.environ['QTMATERIAL_PRIMARYCOLOR']
+        self.shif_col = os.environ['QTMATERIAL_SHIFTEDCOLOR']
+        self.sec_light_col = os.environ['QTMATERIAL_SECONDARYTEXTCOLOR']
         self.multiplier = 2
         self.angle_multiplier = 1
 
+        self.titleBar.setStyleSheet('''QPushButton {{ background-color: {}; }}
+                                               QPushButton:hover {{ background-color: {}; }}
+                                               QLabel {{ color: {}; }}
+                '''.format(self.prim_col, os.environ['QTMATERIAL_PRIMARYLIGHTCOLOR'], self.prim_col))
         ################################################################################################################
 
         ########### Create Gui Elements ###########
@@ -147,7 +162,9 @@ class App(QtWidgets.QMainWindow):
         self.speed_box.setMaximumHeight(95)
         self.speed_box_layout = QHBoxLayout()
         self.speed1 = QRadioButton("1x")
+        self.speed1.setToolTip("1x Speed")
         self.speed2 = QRadioButton("2x")
+        self.speed2.setToolTip("2x Speed")
         self.speed_box_layout.addWidget(self.speed1)
         self.speed_box_layout.addWidget(self.speed2)
         self.speed_box.setLayout(self.speed_box_layout)
@@ -209,8 +226,33 @@ class App(QtWidgets.QMainWindow):
         self.detection_timer = QtCore.QTimer()  # Timer for object detection
         self.detection_timer.timeout.connect(self._scanning)
 
-        #Plot Items
+        # Plot Items
         self.plot_items()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.initial_pos = event.pos()
+        super().mousePressEvent(event)
+        event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self.titleBar.state is False:
+            if self.initial_pos is not None:
+                delta = event.pos() - self.initial_pos
+                self.window().move(
+                    self.window().x() + delta.x(),
+                    self.window().y() + delta.y(),
+                )
+            super().mouseMoveEvent(event)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self.initial_pos = None
+        super().mouseReleaseEvent(event)
+        event.accept()
+
+    def resizeEvent(self, event):
+        self.titleBar.resize(self.width(), self.titleBar.height())
 
     def set_speed(self):
         if self.speed2.isChecked() is True:
@@ -296,7 +338,7 @@ class App(QtWidgets.QMainWindow):
             if sensorData > self.s:
                 sensorData = self.s
             self.ydata = self.ydata[1:] + [sensorData]
-            self.h2.setData(self.ydata, pen=pg.mkPen('g'))  # Plot distance in Top Left Plot
+            self.h2.setData(self.ydata, pen=pg.mkPen(self.prim_col))  # Plot distance in Top Left Plot
 
             self.radius1.append(sensorData)  # For use in determining threshold
             self.ydata2 = (sensorData * np.cos(self.theta[int(self.angle * self.multiplier)]))  # Polar -> Cartesian
@@ -407,7 +449,7 @@ class App(QtWidgets.QMainWindow):
             except Exception as a:
                 print(a)
         else:
-            pass
+            dlg.colors.setCurrentIndex(3)
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
             self.clear_errors()
             try:
@@ -458,7 +500,16 @@ class App(QtWidgets.QMainWindow):
 
     def new_stylesheet(self, f):
         self.current_color = f
+        apply_stylesheet(self.titleBar, theme=f)
         apply_stylesheet(app, theme=f)
+        self.prim_col = os.environ['QTMATERIAL_PRIMARYCOLOR']
+        self.shif_col = os.environ['QTMATERIAL_SHIFTEDCOLOR']
+        self.sec_light_col = os.environ['QTMATERIAL_PRIMARYTEXTCOLOR']
+        self.plot_items()
+        self.titleBar.setStyleSheet('''QPushButton {{ background-color: {}; }}
+                                       QPushButton:hover {{ background-color: {}; }}
+                                       QLabel {{ color: {}; }}
+        '''.format(self.prim_col, os.environ['QTMATERIAL_PRIMARYLIGHTCOLOR'], self.prim_col))
 
     def checked_plots(self):
         #Top Plots
@@ -526,63 +577,63 @@ class App(QtWidgets.QMainWindow):
 
         def top_left():
             # Top Left
-            self.h2 = self.otherplot.plot(pen='g')
+            self.h2 = self.otherplot.plot(pen=self.prim_col)
 
             # Set Grid Lines
             self.otherplot.showGrid(x=True, y=True)
-            self.otherplot.setYRange(0, 180, padding=0)
+            self.otherplot.setYRange(0, self.s, padding=0)
 
         def top_right():
             # Top Right Plot
-            self.h5 = self.otherplot2.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=2, symbolPen=None)
-            self.h6 = self.otherplot2.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
-            self.h9 = self.otherplot2.plot(pen='g')
+            self.h5 = self.otherplot2.plot([], pen=None, symbolBrush=self.shif_col, symbolSize=2, symbolPen=None)
+            self.h6 = self.otherplot2.plot([], pen=None, symbolBrush=self.prim_col, symbolSize=2, symbolPen=None)
+            self.h9 = self.otherplot2.plot(pen=self.prim_col)
 
-            self.otherplot2.setYRange(0, 90, padding=0)
-            self.otherplot2.setXRange(-90, 90, padding=0)
-            self.otherplot2.addLine(x=0, pen=0.2)
-            self.otherplot2.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
-            self.otherplot2.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
+            self.otherplot2.setYRange(0, self.s, padding=0)
+            self.otherplot2.setXRange(-self.s, self.s, padding=0)
+            self.otherplot2.addLine(x=0, pen=0.5)
+            self.otherplot2.plot([806, -806], [-806, 806], pen=0.5)  # 45 degree line
+            self.otherplot2.plot([-806, 806], [-806, 806], pen=0.5)  # 135 degree line
 
             for r in range(0, 806, 10):
                 circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
-                circle.setPen(pg.mkPen(0.2))
+                circle.setPen(pg.mkPen(0.5))
                 self.otherplot2.addItem(circle)
 
         def bot_left():
             # Bottom Left Plot
-            self.h1 = self.otherplot1.plot(pen='g')
-            self.h3 = self.otherplot1.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=2, symbolPen=None)
-            self.h4 = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
-            self.h_static = self.otherplot1.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=5, symbolPen=None)
-            self.h_static2 = self.otherplot1.plot([], pen=None, symbolBrush=(255, 255, 0), symbolSize=2, symbolPen=None)
+            self.h1 = self.otherplot1.plot(pen=self.prim_col)
+            self.h3 = self.otherplot1.plot([], pen=None, symbolBrush=self.shif_col, symbolSize=2, symbolPen=None)
+            self.h4 = self.otherplot1.plot([], pen=None, symbolBrush=self.prim_col, symbolSize=2, symbolPen=None)
+            self.h_static = self.otherplot1.plot([], pen=None, symbolBrush=self.prim_col, symbolSize=5, symbolPen=None)
+            self.h_static2 = self.otherplot1.plot([], pen=None, symbolBrush=self.shif_col, symbolSize=2, symbolPen=None)
 
-            self.otherplot1.setYRange(0, 90, padding=0)
-            self.otherplot1.setXRange(-90, 90, padding=0)
-            self.otherplot1.addLine(x=0, pen=0.2)
-            self.otherplot1.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
-            self.otherplot1.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
+            self.otherplot1.setYRange(0, self.s, padding=0)
+            self.otherplot1.setXRange(-self.s, self.s, padding=0)
+            self.otherplot1.addLine(x=0, pen=0.5)
+            self.otherplot1.plot([806, -806], [-806, 806], pen=0.5)  # 45 degree line
+            self.otherplot1.plot([-806, 806], [-806, 806], pen=0.5)  # 135 degree line
 
             for r in range(0, 806, 10):  # From 2 to 806 cm at 10 cm intervals
                 circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
-                circle.setPen(pg.mkPen(0.2))
+                circle.setPen(pg.mkPen(0.5))
                 self.otherplot1.addItem(circle)
 
         def bot_right():
             # Bottom Right Plot
-            self.h7 = self.otherplot3.plot([], pen=None, symbolBrush=(255, 0, 0), symbolSize=2, symbolPen=None)
-            self.h8 = self.otherplot3.plot([], pen=None, symbolBrush=(0, 255, 0), symbolSize=2, symbolPen=None)
-            self.h10 = self.otherplot3.plot(pen='g')
+            self.h7 = self.otherplot3.plot([], pen=None, symbolBrush=self.shif_col, symbolSize=2, symbolPen=None)
+            self.h8 = self.otherplot3.plot([], pen=None, symbolBrush=self.prim_col, symbolSize=2, symbolPen=None)
+            self.h10 = self.otherplot3.plot(pen=self.prim_col)
 
-            self.otherplot3.setYRange(0, 90, padding=0)
-            self.otherplot3.setXRange(-90, 90, padding=0)
-            self.otherplot3.addLine(x=0, pen=0.2)
-            self.otherplot3.plot([806, -806], [-806, 806], pen=0.2)  # 45 degree line
-            self.otherplot3.plot([-806, 806], [-806, 806], pen=0.2)  # 135 degree line
+            self.otherplot3.setYRange(0, self.s, padding=0)
+            self.otherplot3.setXRange(-self.s, self.s, padding=0)
+            self.otherplot3.addLine(x=0, pen=0.5)
+            self.otherplot3.plot([806, -806], [-806, 806], pen=0.5)  # 45 degree line
+            self.otherplot3.plot([-806, 806], [-806, 806], pen=0.5)  # 135 degree line
 
             for r in range(0, 806, 10):
                 circle = pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
-                circle.setPen(pg.mkPen(0.2))
+                circle.setPen(pg.mkPen(0.5))
                 self.otherplot3.addItem(circle)
 
         if self.plot1 is None and self.plot2 is None:
@@ -738,9 +789,9 @@ class App(QtWidgets.QMainWindow):
 
         # Line Plot
         if self.threshold <= sensorData <= self.detection_range or sensorData <= self.threshold2:
-            self.h2.setData(self.ydata, pen=pg.mkPen('g'))
+            self.h2.setData(self.ydata, pen=pg.mkPen(self.prim_col))
         elif self.threshold2 < sensorData < self.threshold:
-            self.h2.setData(self.ydata, pen=pg.mkPen('r'))
+            self.h2.setData(self.ydata, pen=pg.mkPen(self.shif_col))
         self.angle = int(self.angle)
         # Bottom Left Plot
         ydata_static = (sensorData * np.cos(self.theta[int(self.angle * self.multiplier)]))  # Polar -> Cartesian
@@ -772,7 +823,7 @@ class App(QtWidgets.QMainWindow):
         self.ydata = self.ydata[1:] + [sensorData]
 
         if self.threshold <= sensorData <= self.detection_range or sensorData <= self.threshold2:
-            self.h2.setData(self.ydata, pen=pg.mkPen('g'))
+            self.h2.setData(self.ydata, pen=pg.mkPen(self.prim_col))
             self.ydata4 = (sensorData * np.cos(self.theta[int(self.angle * self.multiplier)]))
 
             self.ydata5.append(self.ydata4)
@@ -782,7 +833,7 @@ class App(QtWidgets.QMainWindow):
             self.h4.setData(self.xdata5, self.ydata5)
 
         elif self.threshold2 < sensorData < self.threshold:
-            self.h2.setData(self.ydata, pen=pg.mkPen('r'))
+            self.h2.setData(self.ydata, pen=pg.mkPen(self.shif_col))
             self.ydata2 = (sensorData * np.cos(self.theta[int(self.angle * self.multiplier)]))
 
             self.ydata3.append(self.ydata2)

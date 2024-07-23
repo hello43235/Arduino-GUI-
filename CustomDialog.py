@@ -60,7 +60,7 @@ class CustomDialog(QDialog):
         self.colors = QComboBox()
         self.themes = list_themes()
 
-        for i in range(len(self.themes)):
+        for i in range(10):
             x = self.themes[i]
             x = x.replace("_", " ")
             x = x.replace(".xml", "")
