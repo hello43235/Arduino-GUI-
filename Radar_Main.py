@@ -8,11 +8,13 @@ import sys
 import os
 import time
 
+import PyQt5
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.exporters
 import serial
 import serial.tools.list_ports
+
 from PyQt5.QtCore import QObject, pyqtSignal, QThread, pyqtSlot, Qt, QEvent
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QCursor, QPixmap
@@ -34,11 +36,10 @@ class App(QtWidgets.QMainWindow):
         super(App, self).__init__(parent)
         self.setWindowTitle("Arduino Project")
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self.titleBar = MyBar(self)
+        self.titleBar = MyBar(self)  # Custom Title Bar
         self.setContentsMargins(0, self.titleBar.height(), 0, 0)
         self.resize(640, self.titleBar.height() + 480)
-        # self.setWindowState(QtCore.Qt.WindowMaximized)
-        self.setMinimumSize(711, 600)  # To avoid being resized too small
+        self.setMinimumSize(720, 600)  # To avoid being resized too small
         self.setStyleSheet("""QLabel { font-size: 14pt; } """)
 
         self.arduino = None
@@ -76,11 +77,8 @@ class App(QtWidgets.QMainWindow):
         # Labels for User Communication
         self.label = QtWidgets.QLabel()  # First Label
         self.label.setMaximumHeight(30)
-        # self.mainbox.layout().addWidget(self.label, 2, 0)
         self.label2 = QtWidgets.QLabel()  # Second Label
-        # self.mainbox.layout().addWidget(self.label2, 3, 0)
         self.label3 = QtWidgets.QLabel()  # Third Label
-        # self.mainbox.layout().addWidget(self.label3, 4, 0)
 
         self.box = QGroupBox("User Communication")
         self.box_layout = QVBoxLayout()
@@ -416,7 +414,7 @@ class App(QtWidgets.QMainWindow):
     def export(self):
         """Exports current plots to a png file"""
         self.clear_errors()
-        self.timer.stop()
+        self.stop_timer()
         dlg = ExportDialog(self)
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
             self.file_name = dlg.file.text()

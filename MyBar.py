@@ -19,7 +19,8 @@ class MyBar(QWidget):
         layout.setContentsMargins(1, 1, 1, 1)
         layout.addStretch()
 
-        self.title = QLabel("My Own Bar", self, alignment=Qt.AlignCenter)
+        self.title = QLabel("My Own Bar", self)
+        self.title.setAlignment(Qt.AlignCenter)
         # if setPalette() was used above, this is not required
 
         style = self.style()
